@@ -44,13 +44,21 @@ download and install form antiprism.com/download/index.html
 
 
 
-## Run
+## Usage
 
 #### create 2D projections
 
-cd ./codes/generate_data
-
-bash generate_data.sh
+1. place CAD models in ./data/[assembly_name]/TARGET_MODELS/models
+2. cd ./codes/generate_data
+3. bash generate_data.sh
+    * assembly_name=[assembly_name]
+    * 4 types of rendering
+        - views : line rendering
+        - views_black : line rendering with color
+        - view_gray : surface rendering
+        - view_gray_black : surface rendering with black background
+    * 6 types of possible cad format
+        - off, step, obj, igs, stl, ply
 
 ## Dataset
 1. download benchmark SHREC2013, SHREC2014 Data in [Sketch3Dtoolkit](https://github.com/garyzhao/Sketch3DToolkit)
