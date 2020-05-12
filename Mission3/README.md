@@ -34,12 +34,12 @@ sudo apt-get install antiprism
 ---
 
 ### Windows
-after install, add directory to sys path
-##### blender 2.82 install
+after install, add directory to system path
+##### * blender 2.82 install
 download and install from blender.org/download/
-##### freecad install
+##### * freecad install
 download and install form freecadweb.org/downloads.php
-##### antiprism install
+##### * antiprism install
 download and install form antiprism.com/download/index.html
 
 
@@ -48,9 +48,9 @@ download and install form antiprism.com/download/index.html
 
 #### create 2D projections
 
-cd ./data/stefan
+cd ./codes/generate_data
 
-python render_run.py
+bash generate_data.sh
 
 ## Dataset
 1. download benchmark SHREC2013, SHREC2014 Data in [Sketch3Dtoolkit](https://github.com/garyzhao/Sketch3DToolkit)
