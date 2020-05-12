@@ -14,7 +14,7 @@ intermediate_results : 폴더별로 분류된 중간산출물
 
     group_image  : 같은 그룹은 같은 색상으로 표시된 결과
 
-    mult : 수량 검출 겨로가
+    mult : 수량 검출 결과
 
     mult_black : 수량 검출 중간 산출물
 
