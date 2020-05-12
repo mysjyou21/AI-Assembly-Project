@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(description='')
 parser.add_argument('--name', '-n', default='stefan_parts', help='folder name in ../../data to render')
 parser.add_argument('--data_path', '-d', default='../../data', help='data folder directory')
 parser.add_argument('--render_type', '-r', default='views_gray', help='rendering type. {views, views_gray, views_black, views_gray_black}')
-parser.add_argument('--cad_type', '-c', default='obj', help='input CAD file extension. {off, step, obj, igs}')
+parser.add_argument('--cad_type', '-c', default='obj', help='input CAD file extension. {off, step, obj, igs, stl, ply}')
 parser.add_argument('--mute', '-m', default='True', help='mute rendering(blender) output {True, False}')
 args = parser.parse_known_args()[0]
 
@@ -19,7 +19,7 @@ args = parser.parse_known_args()[0]
 assert args.render_type in ['views', 'views_gray', 'views_black', 'views_gray_black']
 
 # input cad file type
-assert args.cad_type in ['off', 'step', 'obj', 'igs', 'iges']
+assert args.cad_type in ['off', 'step', 'obj', 'igs', 'iges', 'stl', 'ply']
 
 # input dir / output dir
 folder_path = os.path.join(args.data_path, args.name)
@@ -45,13 +45,15 @@ assert args.mute in ['True', 'False']
 
 
 def main():
+    print("Processing '''%s''' Rendering" % args.render_type)
+
     # create subfolders
     for path in path_list:
         if not os.path.exists(path):
             os.mkdir(path)
 
     # CAD file type conversion (off, step --> obj)
-    cad_ext_dict = {'off': '.off', 'step': '.STEP', 'obj': '.obj', 'igs': '.IGS', 'iges': '.IGS'}
+    cad_ext_dict = {'off': '.off', 'step': '.STEP', 'obj': '.obj', 'igs': '.IGS', 'iges': '.IGS', 'stl': '.STL', 'ply': '.ply'}
     if args.cad_type == 'off':  # .off
         off_files = sorted(glob.glob(os.path.join(target_models_path, '*.off')))
         for off_file in off_files:
@@ -62,6 +64,8 @@ def main():
     elif args.cad_type == 'igs':  # .igs
         flag = '-cad_ext ' + cad_ext_dict[args.cad_type] + ' -target_models_path ' + target_models_path
         os.system('freecadcmd convert_cad_format.py -- ' + flag)
+    elif args.cad_type == 'stl':  # .stl
+        flag = '-cad_ext ' + cad_ext_dict[args.cad_type] + ' -target_models_path ' + target_models_path
     elif args.cad_type == 'obj':  # .obj
         pass
 
@@ -78,7 +82,7 @@ def main():
     else:
         raise Exception('wrong render type')
 
-    flag = '-render_type ' + args.render_type + ' -target_models_path ' + target_models_path + ' -render_output_path ' + render_output_path
+    flag = '-render_type ' + args.render_type + ' -target_models_path ' + target_models_path + ' -render_output_path ' + render_output_path + ' -cad_ext ' + cad_ext_dict[args.cad_type]
     if args.mute == 'True':
         os.system('blender -b -P render_views.py 1 > nul -- ' + flag)
     else:

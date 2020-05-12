@@ -17,8 +17,11 @@ if '--' in sys.argv:
     parser.add_argument('-render_type', help='render type')
     parser.add_argument('-target_models_path', help='target_models_path')
     parser.add_argument('-render_output_path', help='render_output path')
+    parser.add_argument('-cad_ext', help='cad extension')
     args = parser.parse_known_args(argv)[0]
 
+is_stl = True if args.cad_ext == '.STL' else False
+is_ply = True if args.cad_ext == '.ply' else False
 
 D = bpy.data
 C = bpy.context
@@ -82,28 +85,28 @@ alpha : when camera is facing object (camera z-axis), the UP side of rendered im
 
 # new viewpoint
 
-# theta_phi = [(0, 0), (90, 0), (90, 90), (90, 180), (90, 270), (180, 0)]
-
-# alpha = [0, 90, 180, 270]
-
-# cameras = [(tp[0], tp[1], a) for tp in theta_phi for a in alpha]
+theta_phi = [(0, 0), (90, 0), (90, 90), (90, 180), (90, 270), (180, 0)]
+alpha = [0, 90, 180, 270]
+cameras = [(tp[0], tp[1], a) for tp in theta_phi for a in alpha]
+use_tilt_model = True
 
 # old viewpoint
 
-theta = [60, 120]
-
-phi = [i for i in range(0, 360, 30)]
-
-alpha = [0]
-
-cameras = [(t, p, a) for t in theta for p in phi for a in alpha]
+# theta = [60, 120]
+# phi = [i for i in range(0, 360, 30)]
+# alpha = [0]
+# cameras = [(t, p, a) for t in theta for p in phi for a in alpha]
+# use_tilt_model = False
 
 
 def main():
     tic_total = time.time()
-
-    # import .obj
-    files = sorted(glob.glob(os.path.join(args.target_models_path, '*.obj')))
+    if is_stl:
+        files = sorted(glob.glob(os.path.join(args.target_models_path, '*.STL')))
+    elif is_ply:
+        files = sorted(glob.glob(os.path.join(args.target_models_path, '*.ply')))
+    else:
+        files = sorted(glob.glob(os.path.join(args.target_models_path, '*.obj')))
 
     # render
     for file in files:
@@ -157,13 +160,14 @@ def do_model(path):
     image_subdir = os.path.join(args.render_output_path, name)
     image_subdir_abs = os.path.abspath(image_subdir)
     for material in bpy.data.materials:
-        material.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (0, 0, 0, 0) if 'black' in args.render_type.lower() else (1, 1, 1, 1)  # line : object color
+        material.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (1, 0, 0, 0) if 'black' in args.render_type.lower() else (1, 1, 1, 1)  # line : object color
     for c in cameras:
         move_camera(c)
         c = np.array(c)
         c_s = c.astype('str')
         c_s = np.char.zfill(c_s, 3)
-        # tilt_model(imported, c)
+        if use_tilt_model:
+            tilt_model(imported, c)
         C.scene.render.filepath = os.path.join(image_subdir_abs, f'{name}_{c_s[0]}_{c_s[1]}_{c_s[2]}.png')
         O.render.render(write_still=True)
     delete_model(name)
@@ -272,17 +276,34 @@ def load_model(path):
     name = os.path.basename(path).split('.')[0]
     if name not in D.objects:
         print('loading :' + name)
-        O.import_scene.obj(filepath=path, filter_glob='*.obj')
+        if is_stl:
+            O.import_mesh.stl(filepath=path, filter_glob='*.STL')
+        elif is_ply:
+            O.import_mesh.ply(filepath=path, filter_glob='*.ply')
+        else:
+            O.import_scene.obj(filepath=path, filter_glob='*.obj')
+    print(D.objects[0])
+    print(D.objects[1])
+    print(D.objects[2])
     return name
 
 
 def center_model(name):
+
     O.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
-    D.objects[name].location = (0, 0, 0)
+    try:
+        D.objects[name].location = (0, 0, 0)
+    except:
+        name = name.replace('_', ' ').title()
+        D.objects[name].location = (0, 0, 0)
 
 
 def normalize_model(name):
-    obj = D.objects[name]
+    try:
+        obj = D.objects[name]
+    except:
+        name = name.replace('_', ' ').title()
+        obj = D.objects[name]
     dim = obj.dimensions
     print('original dim:' + str(dim))
     if max(dim) > 0:
@@ -293,7 +314,7 @@ def normalize_model(name):
 
 def delete_model(name):
     for ob in C.scene.objects:
-        if ob.type == 'MESH' and ob.name.startswith(name):
+        if ob.type == 'MESH':  # and ob.name.startswith(name):
             ob.select_set(True)
         else:
             ob.select_set(False)
