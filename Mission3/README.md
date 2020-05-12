@@ -20,11 +20,11 @@ antiprism
 
 ### Ubuntu
 
-##### + blender 2.82 install
+##### * blender 2.82 install
 sudo snap install blender --classic
-##### freecad install
+##### * freecad install
 sudo apt install freecad
-##### antiprism install
+##### * antiprism install
 sudo add-apt-repository ppa:antiprism//ppa
 
 sudo apt-get update
