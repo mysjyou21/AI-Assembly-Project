@@ -154,13 +154,13 @@ def do_model(path):
     name = load_model(path)
     center_model(name)
     normalize_model(name)
-    imported = C.selected_objects[0]
+    imported = C.selected_objects[-1]
     imported.rotation_mode = 'XYZ'
     imported.rotation_euler = (0, 0, 0)
     image_subdir = os.path.join(args.render_output_path, name)
     image_subdir_abs = os.path.abspath(image_subdir)
     for material in bpy.data.materials:
-        material.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (1, 0, 0, 0) if 'black' in args.render_type.lower() else (1, 1, 1, 1)  # line : object color
+        material.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (0, 0, 0, 0) if 'black' in args.render_type.lower() else (1, 1, 1, 1)  # line : object color
     for c in cameras:
         move_camera(c)
         c = np.array(c)
@@ -168,6 +168,7 @@ def do_model(path):
         c_s = np.char.zfill(c_s, 3)
         if use_tilt_model:
             tilt_model(imported, c)
+        print(imported.rotation_euler)
         C.scene.render.filepath = os.path.join(image_subdir_abs, f'{name}_{c_s[0]}_{c_s[1]}_{c_s[2]}.png')
         O.render.render(write_still=True)
     delete_model(name)

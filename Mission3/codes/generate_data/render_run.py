@@ -3,6 +3,7 @@ import glob
 import sys
 import time
 import argparse
+import shutil
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--name', '-n', default='stefan_parts', help='folder name in ../../data to render')
@@ -11,6 +12,7 @@ parser.add_argument('--render_type', '-r', default='views_gray', help='rendering
 parser.add_argument('--cad_type', '-c', default='obj', help='input CAD file extension. {off, step, obj, igs, stl, ply}')
 parser.add_argument('--mute', '-m', default='True', help='mute rendering(blender) output {True, False}')
 args = parser.parse_known_args()[0]
+
 
 #----------------------------------------------------------#
 # configuration
@@ -45,12 +47,23 @@ assert args.mute in ['True', 'False']
 
 
 def main():
-    print("Processing '''%s''' Rendering" % args.render_type)
-
     # create subfolders
     for path in path_list:
         if not os.path.exists(path):
             os.mkdir(path)
+
+    # 2d-projection rendering (obj --> png)
+    print(f'Rendering {(args.render_type).upper()}...')
+    if args.render_type == 'views':
+        render_output_path = views_path
+    elif args.render_type == 'views_black':
+        render_output_path = views_black_path
+    elif args.render_type == 'views_gray':
+        render_output_path = views_gray_path
+    elif args.render_type == 'views_gray_black':
+        render_output_path = views_gray_black_path
+    else:
+        raise Exception('wrong render type')
 
     # CAD file type conversion (off, step --> obj)
     cad_ext_dict = {'off': '.off', 'step': '.STEP', 'obj': '.obj', 'igs': '.IGS', 'iges': '.IGS', 'stl': '.STL', 'ply': '.ply'}
@@ -68,19 +81,6 @@ def main():
         flag = '-cad_ext ' + cad_ext_dict[args.cad_type] + ' -target_models_path ' + target_models_path
     elif args.cad_type == 'obj':  # .obj
         pass
-
-    # 2d-projection rendering (obj --> png)
-    print('Rendering ...')
-    if args.render_type == 'views':
-        render_output_path = views_path
-    elif args.render_type == 'views_black':
-        render_output_path = views_black_path
-    elif args.render_type == 'views_gray':
-        render_output_path = views_gray_path
-    elif args.render_type == 'views_gray_black':
-        render_output_path = views_gray_black_path
-    else:
-        raise Exception('wrong render type')
 
     flag = '-render_type ' + args.render_type + ' -target_models_path ' + target_models_path + ' -render_output_path ' + render_output_path + ' -cad_ext ' + cad_ext_dict[args.cad_type]
     if args.mute == 'True':
@@ -108,7 +108,6 @@ def main():
 
 
 if __name__ == '__main__':
-
     tic = time.time()
     main()
     toc = time.time()
