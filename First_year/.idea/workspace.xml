@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="6cef61fc-1303-4983-a755-03e8825e58a8" name="Default Changelist" comment="modified hough circle and speech rectangle">
+      <change beforePath="$PROJECT_DIR$/.idea/Robot_git.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Robot_git.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/function/OCR/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/function/OCR/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/function/numbers.py" beforeDir="false" afterPath="$PROJECT_DIR$/function/numbers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/function/utilities/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/function/utilities/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FavoritesManager">
+    <favorites_list name="Robot" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="kwonjh &lt;gjh8760@snu.ac.kr&gt;" />
+      </list>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1POcVTGsHeo3QYlI07GBG2YDJHL" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="add_unversioned_files" value="true" />
+    <property name="ignore_missing_gitignore" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+  </component>
+  <component name="RunManager" selected="Python.main">
+    <configuration name="config" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="Robot_git" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/config.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="Robot_git" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="Robot_git" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+        <item itemvalue="Python.config" />
+        <item itemvalue="Python.test" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6cef61fc-1303-4983-a755-03e8825e58a8" name="Default Changelist" comment="" />
+      <created>1565607265398</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1565607265398</updated>
+      <workItem from="1565607266542" duration="364000" />
+      <workItem from="1565607642960" duration="1777000" />
+      <workItem from="1565748607594" duration="610000" />
+      <workItem from="1566209225230" duration="8762000" />
+      <workItem from="1566354723107" duration="1125000" />
+      <workItem from="1566356784287" duration="54287000" />
+      <workItem from="1566898992498" duration="7460000" />
+      <workItem from="1566957875644" duration="3243000" />
+      <workItem from="1567124701586" duration="22000" />
+      <workItem from="1567649829542" duration="1055000" />
+      <workItem from="1568709840068" duration="2990000" />
+      <workItem from="1574688425680" duration="209000" />
+      <workItem from="1575360881609" duration="777000" />
+      <workItem from="1575422510201" duration="5000" />
+      <workItem from="1577670735851" duration="3408000" />
+      <workItem from="1577677716335" duration="3000" />
+      <workItem from="1577693097105" duration="146000" />
+      <workItem from="1577693263174" duration="1518000" />
+      <workItem from="1577695788161" duration="413000" />
+      <workItem from="1577696404099" duration="4727000" />
+      <workItem from="1578375516406" duration="82000" />
+      <workItem from="1578488236919" duration="297000" />
+      <workItem from="1578488651632" duration="23000" />
+      <workItem from="1578558128482" duration="4526000" />
+      <workItem from="1578567712726" duration="553000" />
+      <workItem from="1581056472073" duration="1517000" />
+      <workItem from="1581058094666" duration="235000" />
+      <workItem from="1581058345932" duration="6270000" />
+      <workItem from="1583733706679" duration="2000" />
+    </task>
+    <task id="LOCAL-00001" summary="save combined results as images and txt file">
+      <created>1566220098254</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1566220098254</updated>
+    </task>
+    <task id="LOCAL-00002" summary="add rectangle detector">
+      <created>1566906369156</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1566906369156</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="1">
+          <value>
+            <State>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="OPEN_TABS">
+      <set>
+        <option value="1" />
+      </set>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="save combined results as images and txt file" />
+    <MESSAGE value="add rectangle detector" />
+    <MESSAGE value="modified hough circle and speech rectangle" />
+    <option name="LAST_COMMIT_MESSAGE" value="modified hough circle and speech rectangle" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="2334" y="155" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1581056541686">
+      <screen x="1920" y="-20" width="1920" height="1040" />
+    </state>
+    <state x="2334" y="155" key="#com.intellij.execution.impl.EditConfigurationsDialog/1920.-20.1920.1040/0.0.1920.1040@1920.-20.1920.1040" timestamp="1581056541686" />
+    <state x="2635" y="202" key="#xdebugger.evaluate" timestamp="1581483202432">
+      <screen x="1920" y="-20" width="1920" height="1040" />
+    </state>
+    <state x="2635" y="202" key="#xdebugger.evaluate/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581483202432" />
+    <state x="2659" y="255" key="FileChooserDialogImpl" timestamp="1581056573457">
+      <screen x="1920" y="-20" width="1920" height="1040" />
+    </state>
+    <state x="2659" y="255" key="FileChooserDialogImpl/1920.-20.1920.1040/0.0.1920.1040@1920.-20.1920.1040" timestamp="1581056573457" />
+    <state width="1921" height="984" key="GridCell.Tab.0.bottom" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.0.bottom/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.0.center" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.0.center/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.0.left" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.0.left/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.0.right" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.0.right/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.1.bottom" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.1.bottom/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.1.center" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.1.center/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.1.left" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.1.left/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state width="1921" height="984" key="GridCell.Tab.1.right" timestamp="1581489864549">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1921" height="984" key="GridCell.Tab.1.right/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581489864549" />
+    <state x="608" y="163" width="998" height="708" key="SettingsEditor" timestamp="1581058402103">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="608" y="163" width="998" height="708" key="SettingsEditor/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581058402103" />
+    <state x="2381" y="142" key="SettingsEditor/1920.-20.1920.1040/0.0.1920.1040@1920.-20.1920.1040" timestamp="1581056579115" />
+    <state x="2440" y="236" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1581483188247">
+      <screen x="1920" y="-20" width="1920" height="1040" />
+    </state>
+    <state x="2440" y="236" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/1920.-20.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1581483188247" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/main.py</url>
+          <line>212</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Robot$main.coverage" NAME="main Coverage Results" MODIFIED="1581482939572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Robot$config.coverage" NAME="config Coverage Results" MODIFIED="1577708526263" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Robot_git$main.coverage" NAME="main Coverage Results" MODIFIED="1565610251779" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Robot$test.coverage" NAME="test Coverage Results" MODIFIED="1566904273192" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>
