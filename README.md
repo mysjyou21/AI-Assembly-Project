@@ -1,5 +1,6 @@
 # AI-Assembly-Project
 
 
-Robot : first year code
-IKEARobot : second year code
+
+## download LFS files
+https://newsight.tistory.com/330
