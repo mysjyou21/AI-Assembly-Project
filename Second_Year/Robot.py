@@ -484,6 +484,10 @@ class Assembly():
         self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
         self.parts_info[step_num].append(connectivity)
         print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
+        print('----------')
+        print(retrieved_classes)
+        print(matched_poses)
+        print('----------')
         # part retrieval,pose 결과 : 이삭(query image | retrieved model image) self.opt.part_id_pose_path
         # part hole 결과: 은지(전체 이미지에서 bb, hole 위치, label) self.opt.part_hole_path
 
@@ -511,60 +515,6 @@ class Assembly():
             self.is_tool[step_num] = self.tools_loc[step_num]
             for idx, tool in enumerate(self.is_tool[step_num]):
                 self.is_tool[step_num][idx] = 1 if tool != [] else 0
-
-        ################ temporary ###############
-        ###### hole info / pose is incorrect #####
-        ##########################################
-        if step_num == 1:
-            self.parts_info[1] = [('stefan_part2', 43, [['00#00'],['00#01']]),
-                                  ('stefan_part3', 17, [['00#00', ['up', '700', '179', '703', '249', '700', '235']], ['00#01', ['up', '438', '271', '441', '341', '438', '326']]]),
-                                  '']
-
-        if step_num == 2:
-            self.parts_info[2] = [('stefan_part6', 28, [['02#05'],['02#09']]),
-                                  ('stefan12_step1_b', 28, [['01#00'],['01#02'],['03#00'],['03#02']]),
-                                  'stefan12_step1_b#stefan_part6']
-            self.parts_loc[2] = [[50, 20, 1445, 466], [50, 70, 90, 100]]
-
-        if step_num == 3:
-            self.parts_info[3] = [('stefan12_step2', 16, [['05#00'],['05#02']]),
-                                  ('stefan12_step1_a', 28, [['01#00'],['01#02'],['03#00'],['03#02']]),
-                                  'stefan12_step1_a#stefan12_step2']
-            self.parts_loc[3] = [[50, 20, 1398, 559], [50, 70, 90, 100]]
-
-        if step_num == 4:
-            self.parts_info[4] = [('stefan12_step3', 16, [['05#02', ['up', '959', '104', '964', '127', '961', '125']],['05#03'],['05#05']]),
-                                  ('stefan_part4', 16, [['01#00'],['01#02'],['01#03'],['03#00'],['03#02'],['03#03']]),
-                                  'stefan_part4#stefan12_step3']
-            self.parts_loc[4] = [[97, 67, 1398, 839], [50, 20, 513, 513]]
-
-        if step_num == 5:
-            self.parts_info[5] = [('stefan12_step4', 16, [['05#00'],['05#01'],['05#02']]),
-                                  ('stefan_part5', 36, [['02#00', ['up', '995', '0', '997', '33', '995', '27']],
-                                                        ['02#01', ['up', '1017', '41', '1021', '70', '1017', '69']],
-                                                        ['02#02', ['up', '150', '61', '163', '174', '160', '168']]]),
-                                  'stefan_part5#stefan12_step4']
-            self.parts_loc[5] = [[144, 113, 1398, 886], [50, 20, 1492, 420]]
-
-        if step_num == 6:
-            self.parts_info[6] = [('stefan12_step5', 16, [['04#00'], ['04#01'], ['04#02']]),
-                                  '']
-            self.parts_loc[6] = [[50, 906, 1352, 979]]
-
-        if step_num == 7:
-            self.parts_info[7] = [('stefan12_step6', 32, []),
-                                  ('stefan_part1', 37, []),
-                                  '']
-        if step_num == 8:
-            self.parts_info[8] = [('stefan12_step7', 2, []),
-                                  '']
-        if step_num == 9:
-            self.parts_info[9] = [('stefan12_step8', 41, [['00#00'], ['00#01'], ['00#02'], ['00#03']]),
-                                  '']
-
-        print('new_parts_info : ', self.parts_info[step_num])
-
-        ################ temp ends ###############
 
         if self.is_merged[step_num] == True:
             connectors, tools, circles, rectangles, parts = self.component_detector(step_num)

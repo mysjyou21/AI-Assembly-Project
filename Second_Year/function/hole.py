@@ -425,9 +425,9 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
     for i in range(len(parts_id)): # for each part
         part_id = parts_id[i]
         print('########### %s ################' % part_id)
-        if part_id == 'stefan12_step1_b' or part_id== 'stefan_part6' or part_id=='stefan12_step2' or part_id=='stefan12_step3' or part_id=='stefan_part4':
-            import ipdb
-            # ipdb.set_trace()
+        # if part_id == 'stefan12_step1_b' or part_id== 'stefan_part6' or part_id=='stefan12_step2' or part_id=='stefan12_step3' or part_id=='stefan_part4':
+        #     import ipdb
+        #     # ipdb.set_trace()
         if connectivity != '':
             connect = 1
         if part_id not in id_assembly.keys():
@@ -440,16 +440,16 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
         part_pose = part_pose_
 
         # pose estimation correction
-        if part_id == 'stefan12_step5': 
-            part_pose = '24'
-        elif part_id == 'stefan12_step8': 
-            part_pose = '30' 
-        elif part_id=='stefan12_step1_b': 
-            part_pose='4'
-        elif part_id=='stefan_part6': 
-            part_pose='28'
-        elif part_id=='stefan_part4': 
-            part_pose='44'
+        # if part_id == 'stefan12_step5': 
+        #     part_pose = '24'
+        # elif part_id == 'stefan12_step8': 
+        #     part_pose = '30' 
+        # elif part_id=='stefan12_step1_b': 
+        #     part_pose='4'
+        # elif part_id=='stefan_part6': 
+        #     part_pose='28'
+        # elif part_id=='stefan_part4': 
+        #     part_pose='44'
         dic_pose = pose_dic[part_pose]    
     
         if 'part' in part_id:
@@ -460,9 +460,9 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
         # elif part_id == 'stefan_part5':
         #     dic_pose = ['02','00']
 
-        print('Part_pose comparison: {}, {}'.format(part_pose_, part_pose))
-        print('Dic_pose comparison: {}, {}'.format(dic_pose_, dic_pose))
-        print('ID_assembly: {}'.format(id_assembly))
+        # print('Part_pose comparison: {}, {}'.format(part_pose_, part_pose))
+        # print('Dic_pose comparison: {}, {}'.format(dic_pose_, dic_pose))
+        # print('ID_assembly: {}'.format(id_assembly))
         
         
         # import ipdb; ipdb.set_trace()            
