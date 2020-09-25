@@ -115,10 +115,15 @@ class DetectionModel():
                     [P_cls, P_regr] = self.model_classifier_only.predict([F, ROIs])
 
             for ii in range(P_cls.shape[1]):
+                cls_name = self.C.class_mapping[np.argmax(P_cls[0, ii, :])]
+                ###########################
+                if cls_name == 'Tool':
+                    bbox_threshold = 0.97
+                else:
+                    bbox_threshold = 0.8
+                ###########################
                 if np.max(P_cls[0, ii, :]) < bbox_threshold or np.argmax(P_cls[0, ii, :]) == (P_cls.shape[2] - 1):
                     continue
-
-                cls_name = self.C.class_mapping[np.argmax(P_cls[0, ii, :])]
 
                 if cls_name not in bboxes:
                     bboxes[cls_name] = []
@@ -146,7 +151,7 @@ class DetectionModel():
         for key in bboxes:
             bbox = np.array(bboxes[key])
 
-            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0.5)
+            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0.4)
 
             for jk in range(new_boxes.shape[0]):
                 (x1, y1, x2, y2) = new_boxes[jk, :]

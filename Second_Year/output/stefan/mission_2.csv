@@ -1,2 +1,2 @@
 File_name,Label_step_number,Label_part_1,theta,phi,alpha,additional,#,hole,Label_part_2,theta,phi,alpha,additional,#,hole,Label_part_3,theta,phi,alpha,additional,#,hole,Label_part_4,theta,phi,alpha,additional,#,hole,Label_action,#,Label_connector,#
-stefan,2,stefan12_step1_b,000,000,180,left,1,"03#02,01#00,01#02,03#00",stefan_part6,090,180,180,left,1,,,,,,,,,,,,,,,,A004,4,101350,4
+stefan,2,step1_b,000,000,180,left,1,"03#00,01#00,03#02,01#02",part6,090,180,180,left,1,"02#05,02#09",,,,,,,,,,,,,,,A004,4,101350,4

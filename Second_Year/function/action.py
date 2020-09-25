@@ -130,14 +130,14 @@ def map_action(self, circle_labs, circle_nums, act_dic, step_num):
     serials = circle_labs
 
     if (serials not in serial_list) and (serials != []):
-        print("wrong serial number : ", serials)
+#        print("wrong serial number : ", serials)
         count = [0, 0, 0, 0, 0]
         for idx, key in enumerate(serial_list):
             for i in range(6):
                 if serials[0][i] == key[0][i]: count[idx] = count[idx] + 1
         max_idx = np.argmax(np.asarray(count))
         serials = serial_list[max_idx]
-        print("new serial number : ", serials)
+#        print("new serial number : ", serials)
 
     for serial in serials:
         act = act_dic[serial]

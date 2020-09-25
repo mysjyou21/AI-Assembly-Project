@@ -424,50 +424,19 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
 
     for i in range(len(parts_id)): # for each part
         part_id = parts_id[i]
-        print('########### %s ################' % part_id)
-        # if part_id == 'stefan12_step1_b' or part_id== 'stefan_part6' or part_id=='stefan12_step2' or part_id=='stefan12_step3' or part_id=='stefan_part4':
-        #     import ipdb
-        #     # ipdb.set_trace()
         if connectivity != '':
             connect = 1
         if part_id not in id_assembly.keys():
 ##            print('%s not in id_assembly' % part_id)
-            hole_ids[part_id] = []
+            hole_ids[part_id] = hole_ids.get(part_id, []) + []
             continue
-        ##################### git에서 수정한 부분 ##########################
-        part_pose_ = str(parts_pose[i]) ## CORRECTION! POSE_GT
-        dic_pose_ = pose_dic[part_pose_]
-        part_pose = part_pose_
 
-        # pose estimation correction
-        # if part_id == 'stefan12_step5': 
-        #     part_pose = '24'
-        # elif part_id == 'stefan12_step8': 
-        #     part_pose = '30' 
-        # elif part_id=='stefan12_step1_b': 
-        #     part_pose='4'
-        # elif part_id=='stefan_part6': 
-        #     part_pose='28'
-        # elif part_id=='stefan_part4': 
-        #     part_pose='44'
+        part_pose = str(parts_pose[i]) ## CORRECTION! POSE_GT
         dic_pose = pose_dic[part_pose]    
     
         if 'part' in part_id:
             dic_pose = pose_dic_part[part_pose]
 
-        # if part_id == 'stefan_part2' or part_id == 'stefan_part3':
-        #     dic_pose = ['00','02']
-        # elif part_id == 'stefan_part5':
-        #     dic_pose = ['02','00']
-
-        # print('Part_pose comparison: {}, {}'.format(part_pose_, part_pose))
-        # print('Dic_pose comparison: {}, {}'.format(dic_pose_, dic_pose))
-        # print('ID_assembly: {}'.format(id_assembly))
-        
-        
-        # import ipdb; ipdb.set_trace()            
-
-        #####################################################################
         dic_hole = part_holes[part_id]
         part_hole = id_assembly[part_id][1] ### SORTING     x1,y1,x2,y2,(cx1+cx2)//2,(cy1+cy2)//2
         ##### sorting part_hole, to match the locations of labeled holes ########################
@@ -571,11 +540,11 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
                     connect_hole_ids = part_holes[connect_id] 
                     connect_hole_id = [x for x in connect_hole_ids if k in x[6:]][0]
                     connect_hole_loc = [x for x in hole_ids[connect_part_id] if connect_hole_id[0:5] in x[0]]
-                    if len(connect_hole_loc) > 1:
-                        print(connect_hole_loc)
-                        ipdb.set_trace()
-                    else:
-                        connect_hole_loc = connect_hole_loc[0][1]
+#                    if len(connect_hole_loc) > 1:
+#                        print('more than 1', connect_hole_loc)
+#                        ipdb.set_trace()
+#                    else:
+                    connect_hole_loc = connect_hole_loc[0][1]
                     temp_x1 = connect_hole_loc[1]
                     temp_y1 = str(int(connect_hole_loc[4])+100)
                     temp_x2 = connect_hole_loc[3]

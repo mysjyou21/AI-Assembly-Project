@@ -211,7 +211,10 @@ class Assembly():
         # print(components_dict1)
         # print(components_dict2)
         circles = components_dict1['Guidance_Circle']
-        rectangles = components_dict1['Guidance_Sqaure']
+        if 'Guidance_Sqaure' in components_dict1.keys():
+            rectangles = components_dict1['Guidance_Sqaure']
+        else:
+            rectangles = components_dict1['Guidance_Square']
         connectors = components_dict1['Elements']
         tools = components_dict1['Tool']
         parts = components_dict2['Mid'] + components_dict2['New']
@@ -263,14 +266,14 @@ class Assembly():
                 shutil.rmtree(self.opt.part_hole_path)
         if not os.path.exists(self.opt.part_hole_path):
             os.makedirs(self.opt.part_hole_path)
-            
+
         ############################## Hyperparameters modified for each step ########################################
         rate_max_th = None
         if step_num == 1:
             h_min_th = 50
             h_max_th = 150
             rate_min_th = 4
-        
+
         elif step_num == 2:
             h_min_th = 22
             h_max_th = 100
@@ -295,7 +298,7 @@ class Assembly():
             h_min_th = 15
             h_max_th = 16
             rate_min_th = 4
-        
+
         elif step_num == 9:
             h_min_th = 65
             h_max_th = 150
@@ -307,8 +310,8 @@ class Assembly():
             h_max_th = 150
             rate_min_th = 4
 
-        hole_info = detect_fasteners(step_roi, os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num), \
-            step_parts_loc, step_parts_id, ud_check, in_check, h_obj_th, h_min_th, h_max_th, rate_min_th, rate_max_th)
+        hole_info = detect_fasteners(step_roi, os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num),
+                                     step_parts_loc, step_parts_id, ud_check, in_check, h_obj_th, h_min_th, h_max_th, rate_min_th, rate_max_th)
 
         ###########################################################################################
         hole_info, connectivity = convert_view_assembly_to_CAD(hole_info, step_parts_id, step_parts_pose, self.parts_loc[step_num], step_connector)
@@ -394,6 +397,10 @@ class Assembly():
         # mults_list도 마찬가지
         serials_list = self.connectors_serial_imgs[step_num]
         mults_list = self.connectors_mult_imgs[step_num]
+        for i in range(len(serials_list) - 1, -1, -1):
+            if serials_list[i] == []:
+                serials_list.remove(serials_list[i])
+
         connector_serial_OCR = []
         connector_mult_OCR = []
 
@@ -450,8 +457,8 @@ class Assembly():
                 for model in self.cad_models[i]:
                     prev_retrieval_classes.append(model)
         self.candidate_classes = sorted(list(set(cad_list) - set(prev_retrieval_classes)))
-        # if step_num == 1:
-        #     self.candidate_classes = [v for v in self.candidate_classes if 'part' in v]
+        if step_num == 1:
+            self.candidate_classes = [v for v in self.candidate_classes if 'part' in v]
 
         # crop part images from step images with detection results
         step_part_images = []
@@ -467,7 +474,7 @@ class Assembly():
                 os.makedirs(self.opt.detection_path)
             for i in range(len(self.parts[step_num])):
                 cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
-                    self.parts[step_num][i])
+                            self.parts[step_num][i])
 
         # retrieval # 민우 : 1. retrieval 할때 self.steps랑 detection 결과로 image crop해서 사용 --> 이삭 해결
         #                    2.input_images를 images directory 대신 crop 된 image 그 자체의 list로 변경
@@ -483,11 +490,7 @@ class Assembly():
         holes, connectivity = self.hole_detector(step_num, retrieved_classes, matched_poses)
         self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
         self.parts_info[step_num].append(connectivity)
-        print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
-        print('----------')
-        print(retrieved_classes)
-        print(matched_poses)
-        print('----------')
+#        print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
         # part retrieval,pose 결과 : 이삭(query image | retrieved model image) self.opt.part_id_pose_path
         # part hole 결과: 은지(전체 이미지에서 bb, hole 위치, label) self.opt.part_hole_path
 
@@ -543,6 +546,9 @@ class Assembly():
                 cut_material += [circle_info]
                 cut_mult += [mult_temp]
 
+            if step_num == 9: #### temp
+                self.is_tool[step_num] = [1,1] ####
+
         ############## mapping action #############
         step_action = []
         if (cut_material == []) and len(self.parts[step_num]) == 1:
@@ -551,7 +557,7 @@ class Assembly():
             self.step_action += [[[circle_action, circle_num]]]
 
         for idx, material in enumerate(cut_material):
-            if (cut_material == [[],[]]) and len(self.parts[step_num]) == 2:
+            if (cut_material == [[], []]) and len(self.parts[step_num]) == 2:
                 circle_action = ['A005']
                 circle_num = ['1']
                 self.step_action += [[[circle_action, circle_num]]]
@@ -562,20 +568,21 @@ class Assembly():
             elif material == []:
                 if self.is_tool[step_num][idx] == 1:
                     circle_action = ['A003']
-                    circle_num = [str(len(self.parts_info[step_num][0][2]))]    ## maybe revised ?
+                    circle_num = [str(len(self.parts_info[step_num][0][2]))]  # maybe revised ?
                     step_action += [[circle_action, circle_num]]
                     self.connectors_mult_OCR[step_num] = circle_num
                     self.connectors_serial_OCR[step_num] = ['']
             else:
                 circle_mult = cut_mult[idx]
                 serials, circle_action, circle_num = map_action(self, material, circle_mult, act_dic, step_num)
-                if step_num == 9 : print(circle_num)    ##### temp
+                if step_num == 9:
+                    print(circle_num)  # temp
                 step_action += [[circle_action, circle_num]]  # self.step_action has every step's action as element.
                 self.connectors_serial_OCR[step_num] = serials
 
-        if step_action != [] : self.step_action += [step_action]
+        if step_action != []:
+            self.step_action += [step_action]
         ################################################
-
 
         ################### connectivity ###############################
         connectivity = self.parts_info[step_num][-1]
@@ -583,8 +590,8 @@ class Assembly():
         connector_num = len(self.connectors_serial_OCR[step_num])
 
         if connectivity == '':
-            if part_num > 1 and self.step_action[step_num-1][0][0] != ['A005']:
-                action = self.step_action[step_num-1][0][0][0]
+            if part_num > 1 and self.step_action[step_num - 1][0][0] != ['A005']:
+                action = self.step_action[step_num - 1][0][0][0]
                 step_action = []
                 action_group_step = []
                 for i in range(part_num):
@@ -599,8 +606,8 @@ class Assembly():
                     action_group_step += [action_group]
                 self.actions[step_num] = action_group_step
 
-                self.step_action[step_num-1] = step_action
-                return;
+                self.step_action[step_num - 1] = step_action
+                return
 
             else:
                 pass
