@@ -1,8 +1,0 @@
-Blender 2.82 (sub 7)
-Read prefs: /home/isaackang/.config/blender/2.82/config/userpref.blend
-Info: Deleted 3 object(s)
-['stefan12_step8.obj']
-Info: Deleted 3 object(s)
-stefan12_step8 already exists in ./input/stefan/views/VIEWS, skipping rendering
-
-Blender quit
