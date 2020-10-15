@@ -1,0 +1,13 @@
+Blender 2.82 (sub 7)
+Read prefs: /home/isaackang/.config/blender/2.82/config/userpref.blend
+Info: Deleted 3 object(s)
+['part1.obj', 'part2.obj', 'part3.obj', 'part4.obj', 'part5.obj', 'part6.obj']
+Info: Deleted 3 object(s)
+part1 already exists in ./input/stefan/views/VIEWS, skipping rendering
+part2 already exists in ./input/stefan/views/VIEWS, skipping rendering
+part3 already exists in ./input/stefan/views/VIEWS, skipping rendering
+part4 already exists in ./input/stefan/views/VIEWS, skipping rendering
+part5 already exists in ./input/stefan/views/VIEWS, skipping rendering
+part6 already exists in ./input/stefan/views/VIEWS, skipping rendering
+
+Blender quit

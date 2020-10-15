@@ -1,0 +1,4 @@
+File_name,Label_step_number,Label_part_1,theta,phi,alpha,additional,#,hole,Label_part_2,theta,phi,alpha,additional,#,hole,Label_part_3,theta,phi,alpha,additional,#,hole,Label_part_4,theta,phi,alpha,additional,#,hole,Label_action,#,Label_connector,#
+mission2_syn,5,part2,090,090,000,right,1,,,,,,,,,,,,,,,,,,,,,,,[''],,,
+mission2_syn,5,part4,180,000,180,left,1,,,,,,,,,,,,,,,,,,,,,,,[''],,,
+mission2_syn,5,part5,090,000,180,left,1,,,,,,,,,,,,,,,,,,,,,,,[''],,,
