@@ -79,7 +79,14 @@ def create_rendering(args, list_added_obj, render_type):
     input_subfolders = sorted(glob.glob(os.path.join(cad_path + '/*')))
     input_subfolders = [os.path.basename(s) for s in input_subfolders]
     input_subfolders = [os.path.splitext(s)[0] for s in input_subfolders]
-    intersection = sorted(list(set(output_subfolders) & set(input_subfolders)))
+    intersection_ = sorted(list(set(output_subfolders) & set(input_subfolders)))
+    intersection = []
+    for inter in intersection_:
+        temp_num = len(glob.glob(os.path.join(render_output_path, inter, '*.png')))
+        if temp_num == 48:
+            intersection.append(inter)
+        else:
+            os.system('rm -r '+os.path.join(render_output_path, inter))
     print('\nRendering : {}'.format(render_type))
     print('SKIP for already existing folders : {}'.format(intersection))
 

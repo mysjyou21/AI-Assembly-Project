@@ -333,21 +333,30 @@ class Assembly():
             step_img = cv2.rectangle(step_img, (x, y), (x + w, y + h), color=(255, 0, 0), thickness=2)
             step_img = cv2.putText(step_img, step_parts_id[i], (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 0, 0), thickness=2)
             holes = hole_info[i]
+            holes = sorted(holes, key=lambda x: x[1][1])
             if holes == []:
                 continue
+            prev_ps = []
             for hole in holes:
                 hole_type, p = hole
                 px1, py1, px2, py2 = int(p[1]) + (x1 - 50) - 5, int(p[2]) + (y1 - 20) - 5, int(p[3]) + (x1 - 50) + 5, int(p[4]) + (y1 - 20) + 5
                 if step_num == 3:
                     py1 -= 90
-                    py2 -= 90  
+                    py2 -= 90
                 if step_num == 6:
                     px1 -= 50
                     px2 -= 50
                     py1 -= 180
                     py2 -= 180
                 step_img = cv2.rectangle(step_img, (px1, py1), (px2, py2), color=(0, 255, 0), thickness=2)
-                step_img = cv2.putText(step_img, hole_type[0:5], (px1, py1), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(0, 255, 0), thickness=2)
+                if len(prev_ps)>0 and len(hole_type)>2:
+                    temp_ps = [x for x in prev_ps if px1-x[0] <= 40]
+                    temp_ps = [x for x in temp_ps if abs(py1-x[1]) <= 15]
+                    if len(temp_ps)>0:
+                        px1 = px1 + 40
+                        py1 = py1 + 15
+                step_img = cv2.putText(step_img, hole_type, (px1, py1), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(0, 255, 0), thickness=2)
+                prev_ps.append([px1, py1])
         cv2.imwrite(os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num), step_img)
 
         return hole_info, connectivity
@@ -371,7 +380,7 @@ class Assembly():
     def group_components(self, step_num):  # 준형 -상하관계도 고려!!-변수 추가부탁함..!
         """
         OCR, 상하관계 아직 구현 X
-        Group components(circle, rectangle, connector_serial, connector_mult, connector_img, tool)
+        Group components(circle, rectangle, connector_seria20.0, '122620'], ['up', '186', '129', '192', '198', '188', '186']]]], [''], [''], [''], ['122620'], ['2'], 'A004']]
         Update each variables.
         For example, self.serial_numbers[step_num]=[SERIAL1, SERIAL2, SERIAL3](existing) => self.serial_numbers[step_num]=[[SERIAL1, SERIAL2], [SERIAL3], []](updated) """
         step_circles = self.circles_loc[step_num]
@@ -432,11 +441,7 @@ class Assembly():
 
         return connector_serial_OCR, connector_mult_OCR
 
-    def retrieve_part(self, step_num, list_added_obj, list_added_stl):  # 민우
-        """ Retrieve part identity from CAD models, part images as queries
-        return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
-            """
-
+    def rendering(self, step_num, list_added_obj, list_added_stl):
         if len(list_added_obj) != 0 or len(list_added_stl) != 0 or step_num == 1:
 
             ### Prior work for rendering(copy Cad file to new_cad directory in cad directory) ###
@@ -467,8 +472,12 @@ class Assembly():
                 else:
                     os.system('rm ' + filename + '.obj')
 
-        cad_list = sorted(glob.glob(self.opt.cad_path + '/*'))
-        cad_list = [os.path.splitext(os.path.basename(v))[0] for v in cad_list if os.path.splitext(v)[-1] != '']
+    def retrieve_part(self, step_num, list_added_obj, list_added_stl):  # 민우
+        """ Retrieve part identity from CAD models, part images as queries
+        return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
+            """
+        cad_list_ = sorted(glob.glob(self.opt.cad_path + '/*'))
+        cad_list = [os.path.splitext(os.path.basename(v))[0] for v in cad_list_ if os.path.splitext(v)[-1] != '']
         prev_retrieval_classes = []
         if step_num > 1:
             prev_retrieval_classes = []
@@ -499,6 +508,14 @@ class Assembly():
         #                    2.input_images를 images directory 대신 crop 된 image 그 자체의 list로 변경
         retrieved_classes = self.retrieval_model.test(self, step_num, self.candidate_classes)
         self.cad_models[step_num] = retrieved_classes
+
+        self.retrieved_cad_dir = self.opt.cad_path + '/' + str(step_num)
+        if not os.path.exists(self.retrieved_cad_dir):
+            os.mkdir(self.retrieved_cad_dir)
+        for cad in retrieved_classes:
+            cad_path = [x for x in cad_list_ if cad in x]
+            os.system('cp '+ cad_path[0] + ' ' + self.retrieved_cad_dir)
+            
         print('\nretrieved classes : ', retrieved_classes)
         assert len(self.parts[step_num]) == len(self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
 
@@ -509,6 +526,7 @@ class Assembly():
         holes, connectivity = self.hole_detector(step_num, retrieved_classes, matched_poses)
         self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
         self.parts_info[step_num].append(connectivity)
+
 #        print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
         # part retrieval,pose 결과 : 이삭(query image | retrieved model image) self.opt.part_id_pose_path
         # part hole 결과: 은지(전체 이미지에서 bb, hole 위치, label) self.opt.part_hole_path
@@ -636,6 +654,7 @@ class Assembly():
             self.connectors_serial_OCR[step_num] = [self.connectors_serial_OCR[step_num] for x in range(len(self.step_action[step_num-1]))]
         else:
             self.connectors_serial_OCR[step_num] = [[x] for x in self.connectors_serial_OCR[step_num]]
+
         # group every action parameters - per action
         action_group_step = []
         for idx, action in enumerate(self.step_action[step_num - 1]):
@@ -678,4 +697,4 @@ class Assembly():
                 if os.path.exists(self.opt.csv_dir):
                     shutil.rmtree(self.opt.csv_dir)
 
-            write_csv_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)
+            write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)

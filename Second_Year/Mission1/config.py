@@ -31,6 +31,9 @@ def parse_args(description='Robot'):
     parser.add_argument('--gpu', default='0')
     parser.add_argument('--print_time', default=False)
 
+    parser.add_argument('--step_num', default=False, type=int)
+    parser.add_argument('--add_cad', default=False)
+
     opt = parser.parse_args()
 
     return opt
@@ -42,6 +45,7 @@ def init_args(description='Robot'):
     opt.assembly_path = os.path.join(opt.input_path, opt.assembly_name)
     opt.cut_path = os.path.join(opt.input_path, opt.assembly_name, 'cuts')
     opt.cad_path = os.path.join(opt.input_path, opt.assembly_name, 'cad')
+    opt.cadinfo_path = os.path.join(opt.input_path, opt.assembly_name, 'cad_info')
     opt.point_cloud_path = os.path.join(opt.cad_path, 'point_cloud')
     opt.retrieval_views_path = os.path.join(opt.input_path, opt.assembly_name, 'views', 'VIEWS_GRAY_BLACK')
     opt.pose_views_path = os.path.join(opt.input_path, opt.assembly_name, 'views', 'VIEWS')

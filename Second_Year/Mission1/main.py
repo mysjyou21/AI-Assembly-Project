@@ -1,91 +1,184 @@
-from Robot import Assembly
-import glob
+# !/usr/bin/env python3
+
+#import rospy
+#import rospkg
+import sys
 import os
-import cv2
+import argparse
 import time
-import platform
+from socket import *
+from data_file import *
 
-from config import *
-opt = init_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('--start_step', default=1, type=int)
+parser.add_argument('--add_cad', default=0, type=int)
+opt = parser.parse_args()
 
-AUTO=False
-new_cad_list = [['step1_a.STL', 'step1_b.STL'], ['step2.STL'], ['step3.STL'], ['step4.STL'], ['step5.STL'], ['step6.STL'], ['step7.STL'], ['step8.STL']]
+# 프로그램 init (미션2에서 사용)
+def program_init(csock_S, csock_W):
+    print("1. Start Program Init")
+    send_msg = "Program_init"
+    csock_S.send(send_msg.encode())
+    while True:
+        commend=csock_S.recv(SocketInfo.BUFSIZE)
 
-def main():
-    os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(opt.gpu)
-    total_start_time = time.time()
+        if commend.decode('utf-8')=="msg_success":
+            print("2. [SNU] msg sending success")
+            break;
 
-    # (Temp) Isaac
-    if not os.path.exists(os.path.join(os.getcwd(), 'model')):
-        print('copying model folder from .. to .')
-        if platform.system() == 'Windows':
-            os.system('Xcopy /E /I /y ..\model .\model')
+    csock_W.send(send_msg.encode())
+    while True:
+        commend=csock_W.recv(SocketInfo.BUFSIZE)
+
+        if commend.decode('utf-8')=="msg_success":
+            print("3. [Windows] msg sending success")
+            break;
+
+    time.sleep(1)
+    print("4. Request Cad Info")
+
+    send_msg = "request_cadinfo"
+    csock_W.send(send_msg.encode())
+
+    while True:
+        commend=csock_W.recv(SocketInfo.BUFSIZE)
+
+        if commend.decode('utf-8')=="msg_success":
+            print("5. msg sending success")
+            break;
+
+    print("6. Wait Windows Data")
+
+    while True:
+        commend=csock_W.recv(SocketInfo.BUFSIZE)
+
+        if commend.decode('utf-8')=="send_candinfo":
+            print("7. Cad information receive")
+            break;
+
+    time.sleep(1)
+    print("8. Cad info filtering")
+
+    time.sleep(1)
+    print("9. Cad extraction info send")
+
+    send_msg = "extract_CAD_info"
+    csock_S.send(send_msg.encode())
+
+    while True:
+        commend=csock_S.recv(SocketInfo.BUFSIZE)
+
+        if commend.decode('utf-8')=="msg_success":
+            print("10. msg sending success")
+            break;
+
+    send_msg = "request_step_num"
+    csock_S.send(send_msg.encode())
+
+    while True:
+        commend=csock_S.recv(SocketInfo.BUFSIZE)
+        if "msg_success" in commend.decode('utf-8'):
+            step_num = int(commend.decode('utf-8').rstrip("msg_success").split('#')[-1])
+            print("11. Entire step number is %d" % step_num)
+            break;
+
+    print("12. Init end")
+    time.sleep(2)
+
+    return step_num
+
+# Assembly Planner와 서울대 인식기 실행
+def program_run(csock_S, csock_W, loop, step=1, add_cad=0):
+    for i in range(step-1, loop):
+        print("-------------------------------------------")
+        while True:
+            key = input("Press Enter if the next step process is ready")
+            if key == "":
+                break
+        print("1. Program run")
+        time.sleep(1)
+
+        print("2. SNU status checks")
+        if i == step-1:
+            send_msg = "check_cad_file#{}#1#{}".format(i+1,add_cad)
         else:
-            os.system('cp -r ' + os.getcwd() + '/../model ' + os.getcwd() + '/model')
+            send_msg = "check_cad_file#{}#0#{}".format(i+1,add_cad)
 
-    print('----------------')
-    print('Loading Weights')
-    print('----------------')
-    IKEA = Assembly(opt)
-    print('--------------')
-    print('gpu : ', opt.gpu)
-    print('num_steps : ', IKEA.num_steps)
-    print('--------------')
+        csock_S.send(send_msg.encode())
+        while True:
+            commend=csock_S.recv(SocketInfo.BUFSIZE)
 
-    list_prev_obj = []
-    list_prev_stl = []
+            if commend.decode('utf-8')=="msg_success":
+                print("3. Request recognize info")
+                break;
 
-    def get_elapsed_time(toc, tic):
-        sec = int((toc - tic) % 60)
-        minute = int((toc - tic) // 60)
-        return minute, sec
+        send_msg = "request_recognize_info"
+        csock_S.send(send_msg.encode())
+        while True:
+            commend=csock_S.recv(SocketInfo.BUFSIZE)
 
-    for step in range(1, IKEA.num_steps + 1):
-        print('\n\n(step {})\n'.format(step))
-        step_start_time = time.time()
-        IKEA.detect_step_component(step)
-        WAIT_SIGNAL = True  # 챌린지 환경에서는 True
-        SIGNAL = False
-        list_added_obj = []
-        list_added_stl = []
-        if WAIT_SIGNAL:
-            while not SIGNAL:
-                print('Waiting Signal ...', end='\r')
-                time.sleep(0.5)
-                list_update_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
-                list_update_obj = [os.path.basename(x) for x in list_update_obj]                
-                if len(list_prev_obj) < len(list_update_obj):
-                    list_added_obj = [x for x in list_update_obj if x not in list_prev_obj]
-                    list_prev_obj = list_update_obj.copy()
-                    print('list_added_obj :', list_added_obj)
-                    SIGNAL = True
-                list_update_stl = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.STL')))
-                list_update_stl = [os.path.basename(x) for x in list_update_stl]
-                if len(list_prev_stl) < len(list_update_stl):
-                    list_added_stl = [x for x in list_update_stl if x not in list_prev_stl]
-                    list_prev_stl = list_update_stl.copy()
-                    print('list_added_stl :', list_added_stl)
-                    SIGNAL = True
-        if WAIT_SIGNAL:
-            IKEA.retrieve_part(step, list_added_obj, list_added_stl)
-            list_prev_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
-            list_prev_obj = [os.path.basename(x) for x in list_prev_obj]
+            if commend.decode('utf-8')=="msg_success":
+                print("4. msg sending success")
+                break;
+
+        while True:
+            commend=csock_S.recv(SocketInfo.BUFSIZE)
+
+            if commend.decode('utf-8')=="send_recognize_info":
+                print("5. Receiving recognize info")
+                time.sleep(1)
+                break;
+
+        print("6. Augment info")
+        time.sleep(1)
+        print("7. Create PDDL")
+        time.sleep(1)
+        print("8. Make Plan")
+        time.sleep(2)
+
+
+if __name__ == "__main__":
+    print("-------------------------------------------")
+    print("Program Start - Main Program\n")
+    # loop = 9
+    ssock1=socket(AF_INET, SOCK_STREAM)
+    ssock1.bind(SocketInfo.ADDR1)
+    ssock1.listen(5)
+    # 서버 소켓이 클라이언트의 접속 대기
+    csock_S=None
+
+    while True:
+        if csock_S is None:
+            # 서울대 클라이언트 접속 대기
+            print("waiting for SNU connection...")
+            csock_S, addr_info = ssock1.accept()
         else:
-            IKEA.retrieve_part(step)
-        IKEA.group_as_action(step)
-        print(IKEA.actions[step])
-        IKEA.write_csv_mission(step, option=0)
+            break;
 
-        step_end_time = time.time()
-        step_min, step_sec = get_elapsed_time(step_end_time, step_start_time)
-        total_min, total_sec = get_elapsed_time(step_end_time, total_start_time)
-        if opt.print_time:
-            print('step time : {} min {} sec'.format(step_min, step_sec))
-            print('total time : {} min {} sec'.format(total_min, total_sec))
-        if WAIT_SIGNAL and AUTO and step<9:
-            for p in new_cad_list[step-1]:
-                os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
+    ssock2=socket(AF_INET, SOCK_STREAM)
+    ssock2.bind(SocketInfo.ADDR2)
+    ssock2.listen(5)
+    csock_W=None
 
-if __name__ == '__main__':
-    main()
+    while True:
+        if csock_W is None:
+            # 윈도우 클라이언트 접속 대기
+            print("waiting for Windows connection...")
+            csock_W, addr_info = ssock2.accept()
+        else:
+            break;
+
+
+    print("\n\n-------------------------------------------")
+    input("Wait program init...\n\n")
+    loop = program_init(csock_S, csock_W)
+
+    print("\n\n-------------------------------------------")
+    input("Wait program run...\n\n")
+    program_run(csock_S, csock_W, loop, step=opt.start_step, add_cad=opt.add_cad)
+
+    send_msg = "program_end"
+    csock_S.send(send_msg.encode())
+    csock_W.send(send_msg.encode())
+    csock_S.close()
+    csock_W.close()

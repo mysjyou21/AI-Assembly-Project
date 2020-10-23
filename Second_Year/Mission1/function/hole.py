@@ -3,14 +3,19 @@ import numpy as np
 from scipy import ndimage
 import matplotlib.pyplot as plt
 from skimage import color
-import glob
-import os
+import glob, os
+import sys
 import json
+sys.path.append('./funtion/utilities')
+from utilities.utils_hole import read_csv
+from config import *
+opt = init_args()
 
+part_holes = read_csv(opt.cadinfo_path)
 
-hole_info_path = './function/utilities/hole.json'
-with open(hole_info_path, "r") as f:
-    part_holes = json.load(f)
+#hole_info_path = './function/utilities/hole.json'
+#with open(hole_info_path, "r") as f:
+#    part_holes_ = json.load(f)
 # hole-connectivity
 part_connectivity = []
 for key in part_holes.keys():
@@ -42,9 +47,16 @@ sort_key['L'] = ['x', False]
 straight = {}
 keys = part_holes.keys()
 keys = [x for x in keys if '#' not in x]
-true_keys = ['stefan_part2', 'stefan_part3', 'stefan12_step1_a', 'stefan12_step1_b']
+true_keys = ['part2', 'part3', 'step1_a', 'step1_b']
 for key in keys:
     straight[key] = True if key in true_keys else False
+
+pt_origin = np.array([[882,78], [1053,78], [882,1004], [1053,1004]], np.float32)
+pt_left = np.array([[871,93], [1039,114], [883,924], [1028,961]], np.float32)
+pt_right = np.array([[897,112], [1064,90], [906,959], [1050,920]], np.float32)
+
+M1 = cv2.getPerspectiveTransform(pt_left, pt_origin)
+M2 = cv2.getPerspectiveTransform(pt_right, pt_origin)
 
 
 def diagonal_se(r, direction='left'):
@@ -69,7 +81,7 @@ def segment_part_boundaries(bin, kernel_rec, kernel_horz3, kernel_cc, imgname, h
     obj_part = ndimage.find_objects(labeled_part)
     candidates_part = list(range(1,num+1))
     bound_pose = []
-#    h_min_obj_th = 50 #100 
+#    h_min_obj_th = 50 #100
     for i in range(1, num+1):
         shape = obj_part[i-1]
         w_obj = shape[1].stop - shape[1].start
@@ -122,7 +134,7 @@ def segment_part_boundaries(bin, kernel_rec, kernel_horz3, kernel_cc, imgname, h
             y_start = shape[0].start
             x_end = shape[1].stop
             y_end = shape[0].stop
-        
+
             region = labeled_part[y_start:y_end, x_start:x_end]
             region = ((region==idx)*255).astype(np.uint8)
             result_obj[y_start:y_end, x_start:x_end] += region
@@ -172,7 +184,7 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
     fined2 = cv2.morphologyEx(inv, cv2.MORPH_OPEN, kernel_cross)
     fined3 = cv2.morphologyEx(inv, cv2.MORPH_OPEN, kernel_diagl)
     fined4 = cv2.morphologyEx(inv, cv2.MORPH_OPEN, kernel_diagr)
-    
+
     comb = fined | fined3 | fined4
     sub_comb = np.maximum(inv-(comb), np.zeros_like(inv)).astype(np.uint8)
     #  2) Leave only (almost) vertical lines
@@ -195,12 +207,11 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
 #    temp = (color.label2rgb(labeled_fastener)*255).astype(np.uint8)
 #    cv2.imwrite(imgname.rstrip('.png')+'_subcomb_labeled_fastener.png', temp)
     candidates_fastener = list(range(1,num+1))
-    # import ipdb; ipdb.set_trace()
     for i in range(1, num+1):
         shape = obj_fastener[i-1]
         w_obj = shape[1].stop - shape[1].start
         h_obj = shape[0].stop - shape[0].start
-            
+
         if h_obj <= h_min_th and i in candidates_fastener:
             candidates_fastener.remove(i)
         if h_obj >= h_max_th and i in candidates_fastener:
@@ -219,12 +230,12 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
         y_start = shape[0].start
         x_end = shape[1].stop
         y_end = shape[0].stop
-    
+
         region = labeled_fastener[y_start:y_end, x_start:x_end]
         region = ((region==candidates_fastener[i])*255).astype(np.uint8)
         result[y_start:y_end, x_start:x_end] += region
 
-#    visualize = cv2.addWeighted(bin, 0.2, result, 0.8, 20)   
+#    visualize = cv2.addWeighted(bin, 0.2, result, 0.8, 20)
 #    cv2.imwrite(imgname.rstrip('.png')+'_result0_0.png', visualize)
 
     # 3. Segment the boundaries of parts
@@ -241,7 +252,7 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
     morphology_result = np.asarray(part_tight_boundaries_)
     morphology_num = morphology_result.shape[0]
 
-    detection_result = np.tile(np.expand_dims(detection_result, 0), (morphology_num, 1, 1)) 
+    detection_result = np.tile(np.expand_dims(detection_result, 0), (morphology_num, 1, 1))
     morphology_result = np.tile(np.expand_dims(morphology_result, 1), (1, detection_num, 1))
 
     dist = np.square(detection_result-morphology_result) # sum(i,j,:) = i-morphology_result - j-detection_result
@@ -258,7 +269,7 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
         for ind in missing_ind:
             part_tight_boundaries.append(part_tight_boundaries_[ind])
             regions.append(regions_[ind])
-        
+
     elif len(part_tight_boundaries_) < len(parts_loc): # detection result; false positive
 ##        print('false positive detected')
         for ind in range(len(parts_loc)):
@@ -292,7 +303,7 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
     fasteners_num = 0
     final_region = np.zeros_like(gray)
     result = cv2.dilate(result, kernel_vert4, iterations=1)
-##    visualize = cv2.addWeighted(bin, 0.2, result, 0.8, 20)   
+##    visualize = cv2.addWeighted(bin, 0.2, result, 0.8, 20)
 ##    cv2.imwrite(imgname.rstrip('.png')+'_result0.png', visualize)
     labeled_fastener, num = ndimage.label(result)
     temp = (color.label2rgb(labeled_fastener)*255).astype(np.uint8)
@@ -352,13 +363,13 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
             if ud_check and (check_up and check_down):
 #                print('up and down', shape)
                 continue
-            
+
 #            print('ok', '#%d#%d#%d#%d' % (x1,y1,x2,y2), shape, 'rate h w', (y2-y1)/(x2-x1), 'overlap(region, check)', np.sum(region), np.sum(check), np.sum(region)/np.sum(check), 'in(check)', incheck)
-            # to check 
+            # to check
             candidates_fastener_final.append(cand)
-            
+
             fasten_type = 'up' if check_up else 'down'
-            part_type = -1 
+            part_type = -1
             if len(parts_id) < len(part_tight_boundaries):
                 total_num = len(part_tight_boundaries)
             else:
@@ -408,6 +419,30 @@ def detect_fasteners(img, imgname, parts_loc, parts_id, ud_check=True, in_check=
 
     return output
 
+def sort_2d_holes(part_holes, lkey, lorder, ukey, uorder, direction):
+    positions = np.asarray(part_holes)
+    positions = (positions[:,5:7]).astype(np.int32)
+    positions = np.concatenate((positions, np.ones([positions.shape[0], 1], np.float32)), axis=-1)
+    if direction == 'left':
+        positions = np.transpose(np.matmul(M1, np.transpose(positions)))
+    else:
+        positions = np.transpose(np.matmul(M2, np.transpose(positions)))
+    positions_z = np.tile(np.expand_dims(positions[:,-1],-1), [1,3])
+    positions = positions/positions_z
+    positions = positions[:,:2]
+
+    positions = positions.tolist()
+    indices = [x for x in range(len(positions))]
+
+    part_holes_sort = sorted(sorted(zip(positions, indices), key=lambda x: x[0][0] if lkey=='x' else x[0][1], reverse=lorder), key=lambda x: x[0][1] if ukey=='y' else x[0][0], reverse=uorder)
+    part_holes_sort_ind = [x[1] for x in part_holes_sort]
+
+    part_holes_sort = []
+    for ind in part_holes_sort_ind:
+        part_holes_sort.append(part_holes[ind])
+
+    return part_holes_sort
+
 def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, connector=None):
     # input process
     hole_ids = {}
@@ -434,19 +469,25 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
             continue
 
         part_pose = str(parts_pose[i]) ## CORRECTION! POSE_GT
-        dic_pose = pose_dic[part_pose]    
-    
+        part_pose_direction = 'left' if parts_pose[i]%2==0 else 'right'
+
         if 'part' in part_id:
             dic_pose = pose_dic_part[part_pose]
+        else:
+            dic_pose = pose_dic[part_pose]
 
         dic_hole = part_holes[part_id]
         part_hole = id_assembly[part_id][1] ### SORTING     x1,y1,x2,y2,(cx1+cx2)//2,(cy1+cy2)//2
+        if len(part_hole) == 0:
+            hole_ids[part_id] = []
+            continue
         ##### sorting part_hole, to match the locations of labeled holes ########################
         part_hole_up = [x.split('#') for x in part_hole if 'up' in x]
         part_hole_down = [x.split('#') for x in part_hole if 'down' in x]
-        part_loc_dic = loc_dic[part_pose] # [up-up, up-left, down-up, down-left]
         if 'part' in part_id:
             part_loc_dic = loc_dic_part[part_pose]
+        else:
+            part_loc_dic = loc_dic[part_pose] # [up-up, up-left, down-up, down-left]
         up_ukey, up_uorder = sort_key[part_loc_dic[0]]
         up_lkey, up_lorder = sort_key[part_loc_dic[1]]
         down_ukey, down_uorder = sort_key[part_loc_dic[2]]
@@ -491,8 +532,12 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
             part_hole_up = sorted(part_hole_up, key=lambda x: int(x[5]) if up_key=='x' else int(x[6]), reverse=up_order)
             part_hole_down = sorted(part_hole_down, key=lambda x: int(x[5]) if down_key=='x' else int(x[6]), reverse=down_order)
         else:
-            part_hole_up = sorted(sorted(part_hole_up, key=lambda x: int(x[5]) if up_lkey=='x' else int(x[6]), reverse=up_lorder), key=lambda x: int(x[6]) if up_ukey=='y' else int(x[5]), reverse=up_uorder) #sorted(sorted(left), up)
-            part_hole_down = sorted(sorted(part_hole_down, key=lambda x: int(x[5]) if down_lkey=='x' else int(x[6]), reverse=down_lorder), key=lambda x: int(x[6]) if down_ukey=='y' else int(x[5]), reverse=down_uorder)
+            if len(part_hole_up)>0:
+                part_hole_up = sort_2d_holes(part_hole_up, up_lkey, up_lorder, up_ukey, up_uorder, part_pose_direction)
+            if len(part_hole_down)>0:
+                part_hole_down = sort_2d_holes(part_hole_down, down_lkey, down_lorder, down_ukey, down_uorder, part_pose_direction)
+#            part_hole_up = sorted(sorted(part_hole_up, key=lambda x: int(x[5]) if up_lkey=='x' else int(x[6]), reverse=up_lorder), key=lambda x: int(x[6]) if up_ukey=='y' else int(x[5]), reverse=up_uorder) #sorted(sorted(left), up)
+#            part_hole_down = sorted(sorted(part_hole_down, key=lambda x: int(x[5]) if down_lkey=='x' else int(x[6]), reverse=down_lorder), key=lambda x: int(x[6]) if down_ukey=='y' else int(x[5]), reverse=down_uorder)
         part_hole = part_hole_up + part_hole_down
         ################################
 
@@ -502,29 +547,30 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
             CAD_type = dic_pose[0] if p_type=='up' else dic_pose[1]
             if len(dic_hole)==0:
                 continue
-            else: 
-                hole_type_candidates = [x for x in dic_hole if x[0:2] == CAD_type]
+            else:
+                hole_type_candidates = [x for x in dic_hole if x[-1] == CAD_type] #[0:2] == CAD_type]
                 if len(hole_type_candidates) == 0:
 ##                    print('not hole', p)
                     continue
                 if connector is not None:
-                    hole_type_candidates = [x for x in hole_type_candidates if x.split('#')[2] == connector]
+                    hole_type_candidates = [x for x in hole_type_candidates if x[4] == connector] #.split('#')[2] == connector]
                 if len(hole_type_candidates) == 0:
 ##                    print('not available hole', p) #step 4,5 : step4 - wrong dic_hole(5), wrong OCR result, step 9: wrong dic_hole
                     continue
                 hole_type = hole_type_candidates[0]
-                if connect and connectivity.split('#')[0] == part_id:
+                if connect and connectivity.split('#')[0] == part_id: # need to be concerned..
                     connect_part_id = connectivity.split('#')[1]
-                    connect_hole_type = [x[6:11] for x in connect_dic_hole if x[0:5]==hole_type[0:5]]
+                    connect_hole_type = [x.split('#')[3] for x in connect_dic_hole if x.split('#')[1]==hole_type[0]]
 ##                    if len(connect_hole_type) > 1:
 ##                        print('multiple hole candidates!, len %d' % len(connect_hole_type), connect_hole_type, 'for %s' % part_id)
                     if len(connect_hole_type) >= 1:
                         connect_hole_type = connect_hole_type[0]
+                        connect_hole_type = [x[0] for x in part_holes[connect_part_id] if x[0]==connect_hole_type][0]
                         hole_ids[connect_part_id] = hole_ids.get(connect_part_id, []) + [[connect_hole_type, []]]
 ##                    else: #len(connect_hole_type) == 0
 ##                         print('not connected hole!', hole_type)
                 part_holes[part_id].remove(hole_type)
-            hole_ids[part_id].append([hole_type[0:5], p])
+            hole_ids[part_id].append([hole_type[0], p])
 
     id_CAD = []
     for part_id in parts_id:
@@ -539,13 +585,9 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
                 if hole_id_temp[k] == []:
                     connect_id = [x for x in part_connectivity if part_id in x][0]
                     connect_part_id = connect_id.split('#')[0]
-                    connect_hole_ids = part_holes[connect_id] 
-                    connect_hole_id = [x for x in connect_hole_ids if k in x[6:]][0]
-                    connect_hole_loc = [x for x in hole_ids[connect_part_id] if connect_hole_id[0:5] in x[0]]
-#                    if len(connect_hole_loc) > 1:
-#                        print('more than 1', connect_hole_loc)
-#                        ipdb.set_trace()
-#                    else:
+                    connect_hole_ids = part_holes[connect_id]
+                    connect_hole_id = [x for x in connect_hole_ids if k in x.split('#')[3]][0] #[6:]][0]
+                    connect_hole_loc = [x for x in hole_ids[connect_part_id] if x[0] == connect_hole_id.split('#')[1]] #connect_hole_id[0:5] in x[0]]
                     connect_hole_loc = connect_hole_loc[0][1]
                     temp_x1 = connect_hole_loc[1]
                     temp_y1 = str(int(connect_hole_loc[4])+100)
@@ -558,7 +600,7 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
                 hole_id_list.append([k, hole_id_temp[k]])
         else:
             hole_id_list = hole_ids[part_id]
-        
+
         id_CAD.append(hole_id_list)
 
     return id_CAD, connectivity
