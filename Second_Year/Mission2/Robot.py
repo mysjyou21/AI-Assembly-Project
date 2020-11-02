@@ -20,13 +20,14 @@ from function.mission_output import *
 from function.OCRs_new import *
 from function.retrieval.codes.DCA import DCA
 from function.retrieval.render.render_run import *
-from function.Pose.pose_net import POSE_NET
+from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
 from function.hole import *
 from pathlib import Path
 import json
 import shutil
 import platform
 
+from keras import backend as K
 
 class Assembly():
 
@@ -59,7 +60,7 @@ class Assembly():
         self.graph_pose = tf.Graph()
         with self.graph_pose.as_default():
             self.sess_pose = tf.Session(config=config)
-            self.pose_model = POSE_NET(self)
+            self.pose_model = InitialPoseEstimation(self)
 
         # Detection variables
         # component detection results, (x, y, w, h)
@@ -80,12 +81,19 @@ class Assembly():
         self.connectors_serial_OCR = {}
         self.connectors_mult_OCR = {}
 
-        # Retrieval variables
+        # Retrieval & Pose variables
         self.part_H = self.part_W = 224
         self.parts = {}  # detected part images
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
+        self.pose_return_dict = {} # {step_num : list of RT (np.array 3x4)}
+        self.pose_save_dict = {} # {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
+        self.pose_save_dict['000000'] = {}
+        self.cad_names = [os.path.basename(x).split('.')[0] for x in sorted(glob.glob(self.opt.cad_path + '/*.obj'))] # cad names
         self.cad_models = {}  # names of cad models of retrieval results
         self.candidate_classes = []  # candidate cad models for retrieval
+        self.RTs = np.load(self.opt.pose_data_path + '/RTs.npy')
+        self.VIEW_IMGS = np.load(self.opt.pose_data_path + '/view_imgs.npy')
+
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
         self.step_action = []
@@ -138,6 +146,7 @@ class Assembly():
         self.step_connectors, self.step_tools, self.step_circles, self.step_rectangles, self.step_parts, self.step_part_info = self.component_detector(step_num)
         self.step_connectors_mult_imgs, self.step_connectors_mult_loc = self.mult_detector(step_num)
         self.step_connectors_serial_imgs, self.step_connectors_serial_loc = self.serial_detector(step_num)
+
 
         # Set components as the step's components
         self.connectors_serial_imgs[step_num] = self.step_connectors_serial_imgs
@@ -456,10 +465,7 @@ class Assembly():
 
         return connector_serial_OCR, connector_mult_OCR
 
-    def retrieve_part(self, step_num, list_added_obj=[], list_added_stl=[]):  # 민우
-        """ Retrieve part identity from CAD models, part images as queries
-        return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
-            """
+    def rendering(self, step_num, list_added_obj, list_added_stl):
         if len(list_added_obj) != 0 or len(list_added_stl) != 0 or step_num == 1:
 
             ### Prior work for rendering(copy Cad file to new_cad directory in cad directory) ###
@@ -490,6 +496,12 @@ class Assembly():
                 else:
                     os.system('rm ' + filename + '.obj')
 
+
+    def retrieve_part(self, step_num, list_added_obj=[], list_added_stl=[]):  # 민우
+        """ Retrieve part identity from CAD models, part images as queries
+        return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
+            """
+
         cad_list = sorted(glob.glob(self.opt.cad_path + '/*'))
         cad_list = [os.path.splitext(os.path.basename(v))[0] for v in cad_list if os.path.splitext(v)[-1] != '']
 #        prev_retrieval_classes = []
@@ -519,23 +531,35 @@ class Assembly():
                 cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
                             self.parts[step_num][i])
 
-        # retrieval # 민우 : 1. retrieval 할때 self.steps랑 detection 결과로 image crop해서 사용 --> 이삭 해결
-        #                    2.input_images를 images directory 대신 crop 된 image 그 자체의 list로 변경
 #        retrieved_classes = self.retrieval_model.test(self, step_num, self.candidate_classes)
         retrieved_classes = self.parts_info[step_num]
         self.cad_models[step_num] = retrieved_classes
-        print('\nretrieved classes : ', retrieved_classes)
+        print('\nretrieved classes : ', retrieved_classes) # magenta
         assert len(self.parts[step_num]) == len(
             self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
 
         # pose
-        matched_poses = self.pose_model.test(self, step_num)
+        self.parts_info[step_num]
+        self.pose_model.test(self, step_num)
+
+        self.part_dir = self.opt.cad_path + '/' + str(step_num)
+        if not os.path.exists(self.part_dir):
+            os.mkdir(self.part_dir)
+
+        #==================================================================================================
+        # 재우 : update RT values in self.pose_return_dict # {step_num : list of RT (np.array 3x4)}
+        #==================================================================================================
+
+        def closest_gt_RT_index(RT_pred):
+            return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
+        matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+        if self.opt.save_part_id_pose:
+            self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
         # hole
         holes, connectivity = self.hole_detector(step_num, retrieved_classes, matched_poses)
         self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
         self.parts_info[step_num].append(connectivity)
-
     #        print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
     # part retrieval,pose 결과 : 이삭(query image | retrieved model image) self.opt.part_id_pose_path
     # part hole 결과: 은지(전체 이미지에서 bb, hole 위치, label) self.opt.part_hole_path
@@ -676,7 +700,6 @@ class Assembly():
 #
 #            action_group += self.step_action[step_num - 1][idx][0]  # action_label
 #            action_group_step += [action_group]
-
         action_group_step = []
         for p_ind in range(len(self.parts_loc[step_num])):
             parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
@@ -707,4 +730,4 @@ class Assembly():
                 if os.path.exists(self.opt.csv_dir):
                     shutil.rmtree(self.opt.csv_dir)
 
-            write_csv_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)
+            write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)

@@ -12,7 +12,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--ocr_flip_weight_path', default=os.path.join('./model', 'OCR', 'flip_weight'))
     parser.add_argument('--ocr_class_weight_path', default=os.path.join('./model', 'OCR', 'weight'))
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
-    parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose'))
+    parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission2'))
 
     parser.add_argument('--csv_dir', default='./output')
     parser.add_argument('--eval_print', default=False)
@@ -27,9 +27,12 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_mult_npy', default=False)
     parser.add_argument('--save_mult_black', default=False)
     parser.add_argument('--save_group_image', default=False)
+    parser.add_argument('--save_pose_prediction_maps', default=False)
     parser.add_argument('--save_part_id_pose', default=True)
     parser.add_argument('--gpu', default='0')
     parser.add_argument('--print_time', default=False)
+
+    parser.add_argument('--step_num', default=False, type=int)
 
     opt = parser.parse_args()
 
@@ -47,6 +50,7 @@ def init_args(description='Robot'):
     opt.pose_views_path = os.path.join(opt.input_path, opt.assembly_name, 'views', 'VIEWS')
     opt.pose_krt_path = os.path.join(opt.input_path, opt.assembly_name, 'views', 'KRT')
     opt.pose_krt_imgs_path = os.path.join(opt.input_path, opt.assembly_name, 'views', 'KRT', 'krt_imgs')
+    opt.pose_data_path = './function/Pose/data'
     opt.textpath = opt.intermediate_results_path
 
     opt.intermediate_results_path = os.path.join(opt.intermediate_results_path, opt.assembly_name)
@@ -63,6 +67,9 @@ def init_args(description='Robot'):
     opt.group_image_path = os.path.join(opt.intermediate_results_path, 'group_image')
     opt.part_id_pose_path = os.path.join(opt.intermediate_results_path, 'part_id_pose')
     opt.part_hole_path = os.path.join(opt.intermediate_results_path, 'part_hole')
+    opt.initial_pose_estimation_path = os.path.join(opt.intermediate_results_path, 'initial_pose_estimation')
+    opt.initial_pose_estimation_adr = os.path.join(opt.initial_pose_estimation_path, 'initial_pose_estimation.json')
+    opt.initial_pose_estimation_image_path = os.path.join(opt.initial_pose_estimation_path, 'image')
 
     opt.csv_dir = os.path.join(opt.csv_dir, opt.assembly_name)
 
@@ -91,3 +98,9 @@ def string2bool(string):
         bool_type = True if string == 'True' else False
 
     return bool_type
+
+
+if __name__ == '__main__':
+    args = init_args()
+    for k, v in sorted(args.__dict__.items()):
+        print(k, '=', v)

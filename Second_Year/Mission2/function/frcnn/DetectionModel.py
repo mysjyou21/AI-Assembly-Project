@@ -83,6 +83,7 @@ class DetectionModel():
             X = np.transpose(X, (0, 2, 3, 1))
 
         # get the feature maps and output from the RPN
+
         with self.graph_detect.as_default():
             with self.sess_detect.as_default():
                 [Y1, Y2, F] = self.model_rpn.predict(X)

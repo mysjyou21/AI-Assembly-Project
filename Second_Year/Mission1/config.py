@@ -12,7 +12,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--ocr_flip_weight_path', default=os.path.join('./model', 'OCR', 'flip_weight'))
     parser.add_argument('--ocr_class_weight_path', default=os.path.join('./model', 'OCR', 'weight'))
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
-    parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose'))
+    parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission1'))
 
     parser.add_argument('--csv_dir', default='./output')
     parser.add_argument('--eval_print', default=False)

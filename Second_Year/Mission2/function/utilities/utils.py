@@ -166,7 +166,6 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
     tools_list = tools.copy()
     serials_OCR_list = serials_OCR.copy()
     mults_OCR_list = mults_OCR.copy()
-
     ### 1. rectangle 영역 안의 것들은 제거
 
 
@@ -273,9 +272,17 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
                 obj.append(group_idx)
                 # for OCR list
                 if obj_list == connectors_serial_list:
-                    serials_OCR_list[n].append(group_idx)
+                    try:
+                        serials_OCR_list[n].append(group_idx)# Isaac
+                    except:
+                        serials_OCR_list = [list(x) for x in serials_OCR_list] # Isaac
+                        serials_OCR_list[n].append(group_idx)# Isaac
                 if obj_list == connectors_mult_list:
-                    mults_OCR_list[n].append(group_idx)
+                    try:
+                        mults_OCR_list[n].append(group_idx)# Isaac
+                    except:
+                        mults_OCR_list = [list(x) for x in mults_OCR_list]# Isaac
+                        mults_OCR_list[n].append(group_idx)# Isaac
             else:
                 dist_list = []
                 for circle in circles_new:
@@ -308,13 +315,23 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
     old_list = [connectors_list, connectors_serial_list, connectors_mult_list, tools_list, serials_OCR_list, mults_OCR_list]
     new_list = [connectors_list_new, connectors_serial_list_new, connectors_mult_list_new, tools_list_new, serials_OCR_list_new, mults_OCR_list_new]
 
+    if len(np.array(new_list).shape) < 3: # Isaac
+        temp = np.array(new_list)# Isaac
+        temp = np.expand_dims(temp,1)# Isaac
+        new_list = temp.tolist()# Isaac
+
     for old_obj_list, new_obj_list in zip(old_list, new_list):
 
         for old_obj in old_obj_list:
             if old_obj_list in [serials_OCR_list, mults_OCR_list]:
                 ocr_result = old_obj[0]
                 group_idx = old_obj[1]
-                new_obj_list[group_idx].append(ocr_result)
+                try: 
+                    # new_obj_list[group_idx].append(ocr_result) # Isaac
+                    new_obj_list[int(group_idx)].append(ocr_result) # Isaac
+                except:
+                    # import ipdb; ipdb.set_trace(context=21) #red # Isaac
+                    print() # Isaac
             else:
                 bb = old_obj[0:-1]
                 

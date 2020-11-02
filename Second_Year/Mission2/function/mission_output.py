@@ -2,7 +2,7 @@ from action import map_action
 import numpy as np
 import glob
 import os
-import csv
+import csv, json
 from collections import OrderedDict
 import itertools
 import shutil
@@ -266,3 +266,66 @@ def write_csv_mission(actions, cut_path, step_path, csv_dir):
 #                write_list.append('')
         csv_writer.writerow(write_list)
 
+def write_json_mission(actions, cut_path, step_path, json_dir):
+    """ write contents in actions, in json format
+        actions: [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]"""
+
+    filename = cut_path.split('/')[-2]
+    if not os.path.exists(json_dir):
+        os.makedirs(json_dir)
+
+    f = open(os.path.join(json_dir, 'mission_%s.json' % step_path), 'w')
+
+    step_dic = OrderedDict()
+    step_dic['File_name'] = filename
+    step_dic['Label_step_number'] = step_path
+
+    for act_i in range(len(actions)):
+        action = actions[act_i]
+        write_list = [filename, step_path]
+        action_dic = OrderedDict()
+        # part
+        for i in range(0,4):
+            part_dic = OrderedDict()
+            part = action[i]
+            if part[0]!='':
+                part_loc = part[0] # [x,y,w,h]
+                part_id = part[1] # 'string'
+                part_pose = part[2] # [theta,phi,alpha,additional]
+                part_holes = part[3]
+                part_dic['label'] = part_id
+                part_dic['theta'] = part_pose[0]
+                part_dic['phi'] = part_pose[1]
+                part_dic['alpha'] = part_pose[2]
+                part_dic['additional'] = part_pose[3]
+                part_dic['#'] = '1' #default 1
+#                hole_string = ''
+#                for part_hole in part_holes:
+#                    hole_string += part_hole[0]+','
+#                hole_string = hole_string[0:-1]
+#                write_list.append(hole_string)
+                part_holes = [x[0] for x in part_holes]
+                part_holes = sorted(part_holes)
+                part_dic['hole'] = part_holes
+            action_dic['Part%d' % i] = part_dic
+
+        action_lab = action[6]
+        action_lab_dic = OrderedDict()
+        action_lab_dic['label'] = action_lab
+        mults = action[5]
+        if len(mults)==0:
+            mults = ['1']
+        action_lab_dic['#'] = mults[0]
+        action_dic['Action'] = action_lab_dic
+        connector_dic = OrderedDict()
+        serials = action[4]
+        if len(serials)==0:
+            serials=['']
+        elif len(serials[0])==0:
+            mults[0] = '1'
+        connector_dic['label'] = serials[0]
+        connector_dic['#'] = mults[0]
+        action_dic['Connector'] = connector_dic
+        step_dic['Action%d' % act_i] = action_dic
+
+    json.dump(step_dic, f, indent=2)

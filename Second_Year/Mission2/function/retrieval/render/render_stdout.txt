@@ -1,8 +1,8 @@
 Blender 2.82 (sub 7)
 Read prefs: /home/isaackang/.config/blender/2.82/config/userpref.blend
-usage: blender [-h] [-render_type RENDER_TYPE]
-               [-list_added_obj LIST_ADDED_OBJ [LIST_ADDED_OBJ ...]]
-               [-render_output_path RENDER_OUTPUT_PATH] [-cad_path CAD_PATH]
-               [-point_cloud_path POINT_CLOUD_PATH] [-krt_path KRT_PATH]
-               [-krt_imgs_path KRT_IMGS_PATH]
-blender: error: argument -list_added_obj: expected at least one argument
+Traceback (most recent call last):
+  File "/home/isaackang/D/drive/Robot/Codes/IKEARobot/./function/retrieval/render/render_views.py", line 15, in <module>
+    from pose_gt import POSE_TO_LABEL
+ModuleNotFoundError: No module named 'pose_gt'
+
+Blender quit
