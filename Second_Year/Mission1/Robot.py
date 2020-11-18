@@ -83,6 +83,7 @@ class Assembly():
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
         self.cad_models = {}  # names of cad models of retrieval results
         self.candidate_classes = []  # candidate cad models for retrieval
+        self.hole_pairs = {}
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
         self.step_action = []
@@ -325,8 +326,9 @@ class Assembly():
         hole_info = detect_fasteners(step_roi, os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num),
                                         step_parts_loc, step_parts_id, ud_check, in_check, h_obj_th, h_min_th, h_max_th, rate_min_th, rate_max_th)
         ###########################################################################################
-        hole_info, connectivity = convert_view_assembly_to_CAD(hole_info, step_parts_id, step_parts_pose, self.parts_loc[step_num], step_connector)
+        hole_info, connectivity, hole_pairs = convert_view_assembly_to_CAD(hole_info, step_parts_id, step_parts_pose, self.parts_loc[step_num], step_connector, step_num)
 
+        self.hole_pairs[step_num] = hole_pairs
         # visualization
         for i in range(len(step_parts_loc_origin)):
             x, y, w, h = step_parts_loc_origin[i]
@@ -359,6 +361,8 @@ class Assembly():
                 prev_ps.append([px1, py1])
         cv2.imwrite(os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num), step_img)
 
+        for i in range(len(step_parts_id)):
+            hole_info[i] = [x[0] for x in hole_info[i]]
         return hole_info, connectivity
 
     def serial_detector(self, step_num):  # 이삭
@@ -515,7 +519,7 @@ class Assembly():
         for cad in retrieved_classes:
             cad_path = [x for x in cad_list_ if cad in x]
             os.system('cp '+ cad_path[0] + ' ' + self.retrieved_cad_dir)
-            
+
         print('\nretrieved classes : ', retrieved_classes)
         assert len(self.parts[step_num]) == len(self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
 
@@ -686,6 +690,7 @@ class Assembly():
             with open('./function/utilities/label_to_pose.json', 'r') as f:
                 pose_dic = json.load(f)
             step_actions = self.actions[step_num]
+            step_hole_pair = self.hole_pairs[step_num]
             for action in step_actions:
                 for i in range(0, 4):
                     part = action[i]
@@ -693,6 +698,8 @@ class Assembly():
                         part_pose_ind = part[2]
                         part_pose_lab = pose_dic[str(part_pose_ind)]
                         action[i][2] = part_pose_lab.split('_')
+            if len(step_hole_pair) > 1:
+                step_actions[0].append(step_hole_pair) # assume: 2,3,4,5. only 1 action in each step
             if step_num == 1:
                 if os.path.exists(self.opt.csv_dir):
                     shutil.rmtree(self.opt.csv_dir)

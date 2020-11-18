@@ -212,22 +212,22 @@ import sys
 stefan_inter = {}
 #stefan_inter['step1_a'] = {'part2_1-hole_1': ['left', '101350'], 'part2_1-hole_2': ['right', '101350'], 'part2_1-hole_3': ['left', '104322'], 'part2_1-hole_4': ['right', '104322'], 'part2_1-hole_5': ['left', '101350'], 'part2_1-hole_6': ['right', '101350'], 'C122620_1-hole_1': ['back', '122620'], 'C122620_2-hole_1': ['back', '122620']}
 #stefan_inter['step1_b'] = {'part3_1-hole_1': ['left', '101350'], 'part3_1-hole_2': ['right', '101350'], 'part3_1-hole_3': ['left', '104322'], 'part3_1-hole_4': ['right', '104322'], 'part3_1-hole_5': ['left', '101350'], 'part3_1-hole_6': ['right', '101350'], 'C122620_1-hole_1': ['back', '122620'], 'C122620_2-hole_1': ['back', '122620']}
-stefan_inter['step1_a'] = {'part2_1-hole_1': 'left', 'part2_1-hole_2': 'right', 'part2_1-hole_3': 'left', 'part2_1-hole_4': 'right', 'part2_1-hole_5': 'left', 'part2_1-hole_6': 'right', 'C122620_1-hole_1': 'back', 'C122620_2-hole_1': 'back'}
-stefan_inter['step1_b'] = {'part3_1-hole_1': 'left', 'part3_1-hole_2': 'right', 'part3_1-hole_3': 'left', 'part3_1-hole_4': 'right', 'part3_1-hole_5': 'left', 'part3_1-hole_6': 'right', 'C122620_1-hole_1': 'back', 'C122620_2-hole_1': 'back'}
-stefan_inter['step2'] = {'part3_1-hole_4': 'bottom', 'part6_1-hole_1': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_3': 'bottom', 'part6_1-hole_5': 'top', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'bottom', 'part6_1-hole_9': 'top', 'part6_1-hole_10': 'bottom', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
-stefan_inter['step3'] = {'part2_1-hole_3': 'bottom', 'part3_1-hole_4': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_5': 'top', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'bottom', 'part6_1-hole_9': 'top', 'part6_1-hole_10': 'bottom', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
-stefan_inter['step4'] = {'part2_1-hole_3': 'bottom', 'part3_1-hole_4': 'bottom', 'part4_1-hole_5': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_5': 'top', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'bottom', 'part6_1-hole_9': 'top', 'part6_1-hole_10': 'bottom', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
-stefan_inter['step5'] = {'part6_1-hole_2': 'top', 'part6_1-hole_5': 'top', 'part6_1-hole_9': 'top', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
+stefan_inter['step1_a'] = {'part2_1-hole_0': 'left', 'part2_1-hole_1': 'right', 'part2_1-hole_2': 'left', 'part2_1-hole_3': 'right', 'part2_1-hole_4': 'left', 'part2_1-hole_5': 'right', 'C122620_1-hole_1': 'back', 'C122620_2-hole_1': 'back'}
+stefan_inter['step1_b'] = {'part3_1-hole_0': 'left', 'part3_1-hole_1': 'right', 'part3_1-hole_2': 'left', 'part3_1-hole_3': 'right', 'part3_1-hole_4': 'left', 'part3_1-hole_5': 'right', 'C122620_3-hole_1': 'back', 'C122620_4-hole_1': 'back'}
+stefan_inter['step2'] = {'part3_1-hole_3': 'bottom', 'part6_1-hole_0': 'bottom', 'part6_1-hole_1': 'top', 'part6_1-hole_2': 'bottom', 'part6_1-hole_4': 'top', 'part6_1-hole_6': 'bottom', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'top', 'part6_1-hole_9': 'bottom', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
+stefan_inter['step3'] = {'part2_1-hole_2': 'bottom', 'part3_1-hole_3': 'bottom', 'part6_1-hole_1': 'top', 'part6_1-hole_4': 'top', 'part6_1-hole_6': 'bottom', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'top', 'part6_1-hole_9': 'bottom', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
+stefan_inter['step4'] = {'part2_1-hole_2': 'bottom', 'part3_1-hole_3': 'bottom', 'part4_1-hole_4': 'bottom', 'part6_1-hole_1': 'top', 'part6_1-hole_4': 'top', 'part6_1-hole_6': 'bottom', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'top', 'part6_1-hole_9': 'bottom', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
+stefan_inter['step5'] = {'part6_1-hole_1': 'top', 'part6_1-hole_4': 'top', 'part6_1-hole_8': 'top', 'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
 stefan_inter['step6'] = {'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
 stefan_inter['step7'] = {'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
 stefan_inter['step8'] = {'C122620_1_hole_1': 'front', 'C122620_2_hole_1': 'front', 'C122620_3_hole_1': 'front', 'C122620_4_hole_1': 'front'}
 
 # pre-defined hole-connectivity 'PART1(related to fasteners)#PART2(may not having fasteners)'
 connect = {}
-connect['step1_a#step2'] = ['left#part2_1-hole_2#bottom#part6_1-hole_3', 'left#part2_1-hole_6#bottom#part6_1-hole_1']
-connect['step1_b#part6'] = ['right#part3_1-hole_1#bottom#5', 'right#part3_1-hole_5#bottom#3']
-connect['part4#step3'] = ['right#7#bottom#part6_1-hole_10', 'right#3#bottom#part6_1-hole_8', 'right#1#bottom#part6_1-hole_7']
-connect['part5#step4'] = ['bottom#8#bottom#part4_1-hole_5', 'bottom#1#bottom#part2_1-hole_3', 'bottom#4#bottom#part3_1-hole_4']
+connect['step1_a#step2'] = ['left#part2_1-hole_1#bottom#part6_1-hole_2', 'left#part2_1-hole_5#bottom#part6_1-hole_0']
+connect['step1_b#part6'] = ['right#part3_1-hole_0#bottom#5', 'right#part3_1-hole_4#bottom#3']
+connect['part4#step3'] = ['right#7#bottom#part6_1-hole_9', 'right#3#bottom#part6_1-hole_7', 'right#1#bottom#part6_1-hole_6']
+connect['part5#step4'] = ['bottom#8#bottom#part4_1-hole_4', 'bottom#1#bottom#part2_1-hole_2', 'bottom#4#bottom#part3_1-hole_3']
 
 connector = {}
 connector[3.] = '122620'
@@ -324,7 +324,7 @@ def read_csv(csv_dir):
                 through = False
             else:
                 original_name = name.split('-')[0].split('_')[0]
-                original_hole_name = str(int(name.split('-')[1].split('_')[1])-1)
+                original_hole_name = str(int(name.split('-')[1].split('_')[1])) #-1)
                 original_hole_info = hole_dic[original_name]
                 original_hole_info = [x for x in original_hole_info if x[0] == original_hole_name][0]
                 con = original_hole_info[4]

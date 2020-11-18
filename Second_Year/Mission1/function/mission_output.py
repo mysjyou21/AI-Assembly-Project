@@ -304,7 +304,7 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
 #                    hole_string += part_hole[0]+','
 #                hole_string = hole_string[0:-1]
 #                write_list.append(hole_string)
-                part_holes = [x[0] for x in part_holes]
+#                part_holes = [x[0] for x in part_holes]
 
                 if 'part' in part_id:
                     part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
@@ -330,6 +330,10 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
         connector_dic['#'] = mults[0]
         action_dic['Connector'] = connector_dic
         step_dic['Action%d' % act_i] = action_dic
+        if len(action)==8:
+            step_dic['HolePair'] = action[7]
+        else:
+            step_dic['HolePair'] = []
 
     json.dump(step_dic, f, indent=2)
 

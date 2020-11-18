@@ -6,6 +6,7 @@ from skimage import color
 import glob, os
 import sys
 import json
+from copy import deepcopy
 sys.path.append('./funtion/utilities')
 from utilities.utils_hole import read_csv
 from config import *
@@ -37,6 +38,9 @@ with open(hole_pose_part_path, 'r') as f:
 hole_loc_part_path = './function/utilities/hole_loc_part.json'
 with open(hole_loc_part_path, 'r') as f:
     loc_dic_part = json.load(f)
+
+with open('./function/utilities/hole_pair.json', 'r') as f:
+    hole_pairs = json.load(f)
 
 sort_key = {}
 sort_key['F'] = ['y', True]
@@ -443,7 +447,7 @@ def sort_2d_holes(part_holes, lkey, lorder, ukey, uorder, direction):
 
     return part_holes_sort
 
-def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, connector=None):
+def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, connector=None, step_num=1):
     # input process
     hole_ids = {}
     check=0
@@ -603,4 +607,27 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
 
         id_CAD.append(hole_id_list)
 
-    return id_CAD, connectivity
+    # hole pair print
+    hole_pair_step = deepcopy(hole_pairs[str(step_num)])
+    hole_pair_step_print = []
+
+    candidate_holes = []
+    for pid in range(len(parts_id)):
+        pa_id = parts_id[pid]
+        id_CAD_part = id_CAD[pid]
+        temp = ['%s_1-hole_%s'%(pa_id, x[0]) for x in id_CAD_part] if 'part' in pa_id else [x[0] for x in id_CAD_part]
+        candidate_holes.extend(temp)
+
+    for hole_step in hole_pair_step:
+        h = hole_step.split('#')
+        check=1
+        for hh in h:
+            if 'C' in hh:
+                continue
+            else:
+                if hh not in candidate_holes:
+                    check=0
+        if check:
+            hole_pair_step_print.append(hole_step)
+
+    return id_CAD, connectivity, hole_pair_step_print
