@@ -46,7 +46,7 @@ class InitialPoseEstimation():
             sess = args.sess_pose
             self.model = CorrespondenceBlockModel(3, 7, 256) # in channels, id channels, uvw channels
             print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
-            checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt')
+            checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             self.model.cuda(0)
@@ -64,7 +64,7 @@ class InitialPoseEstimation():
             image_tensor = transforms.ToTensor()(image)
             image_tensor = torch.unsqueeze(image_tensor, 0)
             image_tensor = image_tensor.cuda(0)
-            
+
             # feed forward
             idmask_pred, umask_pred, vmask_pred, wmask_pred = self.model(image_tensor)
 
@@ -125,7 +125,7 @@ class InitialPoseEstimation():
             # PnP
             args.pose_save_dict['000000'][str(step_num).zfill(6)] = []
             args.pose_return_dict[step_num] = []
-            
+
             obj_ids = [args.cad_names.index(model) for model in cad_models]
             for obj_id in obj_ids:
                 R, T = self.PnP(obj_id, ID, U, V, W, self.K)
@@ -163,7 +163,7 @@ class InitialPoseEstimation():
                 x_scaled = int(x * self.W / _W)
                 YX.append((x_scaled, y_scaled))
         for (u, v, w, yx) in zip(U, V, W, YX):
-            if (u, v, w) in correspondence_dict and (u, v, w) != (0, 0, 0): 
+            if (u, v, w) in correspondence_dict and (u, v, w) != (0, 0, 0):
                 y, x = yx
                 mapping_2d.append([y, x])
                 mapping_3d.append(correspondence_dict[(u, v, w)])

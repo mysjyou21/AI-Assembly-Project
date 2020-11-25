@@ -304,11 +304,10 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
 #                    hole_string += part_hole[0]+','
 #                hole_string = hole_string[0:-1]
 #                write_list.append(hole_string)
-                part_holes = [x[0] for x in part_holes]
+#                part_holes = [x[0] for x in part_holes]
 
                 if 'part' in part_id:
                     part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
-
                 part_holes = sorted(part_holes)
                 part_dic['hole'] = part_holes
             action_dic['Part%d' % i] = part_dic
@@ -330,7 +329,13 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
         connector_dic['label'] = 'C'+serials[0] if len(serials[0])>0 else serials[0]
         connector_dic['#'] = mults[0]
         action_dic['Connector'] = connector_dic
+        if len(action)==8:
+            action_dic['HolePair'] = action[7]
+        else:
+            action_dic['HolePair'] = []
+
         step_dic['Action%d' % act_i] = action_dic
 
     json.dump(step_dic, f, indent=2)
+
     f.close()
