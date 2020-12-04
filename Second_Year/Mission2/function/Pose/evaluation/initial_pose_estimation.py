@@ -17,17 +17,22 @@ from ..datasets.correspondence_block_dataset import CorrespondenceBlockDataset
 from ..models.correspondence_block_model import CorrespondenceBlockModel
 from ..utils.pose_gt import *
 
+sys.path.append('./function/utilities')
+from function.utilities.utils import *
+
 class Color():
     def __init__(self):
         """color palette (BGR) """
         self.colors = {
-            0 : (0, 0, 255),
-            1 : (0, 165, 255),
-            2 : (0, 255, 255),
-            3 : (0, 128, 0),
-            4 : (255, 0, 0),
-            5 : (130, 0, 75),
-            6 : (0, 0, 0)
+            0 : (0, 0, 0),
+            1 : (0, 0, 255),
+            2 : (0, 165, 255),
+            3 : (0, 255, 255),
+            4 : (0, 128, 0),
+            5 : (255, 0, 0),
+            6 : (130, 0, 75),
+            7 : (255, 255, 0),
+            8 : (255, 0, 255),
         }
     def __call__(self, x):
         return self.colors[x]
@@ -39,8 +44,6 @@ class InitialPoseEstimation():
         self.checkpoint_path = self.args.pose_model_path
         self.pose_function_path = './function/Pose'
         self.pose_data_path = self.pose_function_path + '/data'
-        self.K = np.array([3444.4443359375, 0.0, 874.0, 0.0, 3444.4443359375, 1240.0, 0.0, 0.0, 1.0]).reshape(3, 3)
-        self.N = 6
 
         with args.graph_pose.as_default():
             sess = args.sess_pose
@@ -53,10 +56,21 @@ class InitialPoseEstimation():
         with open(self.pose_data_path + '/uvw_xyz_correspondences.pkl', 'rb') as f:
             self.correspondence_dicts = pickle.load(f)
 
+        refresh_folder(args.opt.initial_pose_estimation_image_path)
+        refresh_folder(args.opt.part_id_pose_path)
+
 
     def test(self, args, step_num):
+        """predict pose
+
+        update self.return_dict
+
+        Args:
+            args: self of Assembly class
+            step_num: step number
+        """
         color = Color()
-        image = args.cuts[step_num - 1].copy()
+        image = args.steps[step_num].copy()
         self.H, self.W, _ = image.shape
         with torch.no_grad():
             # load image on GPU
@@ -97,12 +111,12 @@ class InitialPoseEstimation():
             # post-process ID-map with detection results
             parts_loc = args.parts_loc[step_num]
             cad_models = args.cad_models[step_num]
-            ID_new = np.full(ID.shape, self.N).astype(np.int)
+            ID_new = np.zeros(ID.shape).astype(np.int)
             for bbox, model in zip(parts_loc, cad_models):
-                obj_id = args.cad_names.index(model)
+                obj_id = args.cad_names.index(model) + 1
                 mask_id = (255 * (ID == obj_id)).astype(np.uint8)
                 ID_id = (obj_id * (ID == obj_id)).astype(np.uint8)
-                x, y, w, h = bbox
+                x, y, w, h = bbox[0:4]
                 x = int(x * _W / self.W)
                 y = int(y * _H / self.H)
                 w = int(w * _W / self.W)
@@ -113,22 +127,110 @@ class InitialPoseEstimation():
                 mask_inv = cv2.bitwise_not(mask)
                 ID_new = cv2.bitwise_and(ID_new, ID_new, mask=mask_inv) # erase mask region
                 ID_new += cv2.bitwise_and(ID_id, ID_id, mask=mask) # fill mask region
-            ID_color_new = np.zeros((_H, _W, 3)).astype(np.uint8)
+            ID_new_color = np.zeros((_H, _W, 3)).astype(np.uint8)
             for h in range(_H):
                 for w in range(_W):
-                    ID_color_new[h, w, :] = color(ID_new[h, w])
+                    ID_new_color[h, w, :] = color(ID_new[h, w])
             if args.opt.save_pose_prediction_maps:
-                cv2.imwrite(save_path + '/STEP{}_ID_new.png'.format(step_num), ID_color_new)
-            ID = ID_new
+                cv2.imwrite(save_path + '/STEP{}_ID_new.png'.format(step_num), ID_new_color)
 
+            # if no New part is found, infer from pose segmentation map
+            max_pixels = 0
+            
+            new_part_should_be_found_condition = True
+            if not len(args.circles_loc[step_num]):
+                # no circles are detected
+                new_part_should_be_found_condition = False
+            grouped_serial_OCRs = args.connectors_serial_OCR[step_num]
+            for grouped_serial_OCR in grouped_serial_OCRs:
+                if '122925' in grouped_serial_OCR:
+                    # short screw
+                    new_part_should_be_found_condition = False
+                if '104322' in grouped_serial_OCR:
+                    # long screw
+                    new_part_should_be_found_condition
+
+            if new_part_should_be_found_condition:
+                if not len(set(args.used_parts[step_num]) & set(args.unused_parts[step_num])): # no New part found
+
+                    # divide ID to ID_parts
+                    ID_parts = []
+                    part_ids = [0]
+                    part_ids.extend(args.unused_parts[1])
+                    for part_id in part_ids:
+                        ID_part = np.where(ID == part_id, part_id, 0).astype(np.uint8)
+                        ID_parts.append(ID_part)
+
+                    # find connected components
+                    num_comps, indexed_maps, stats, part_id_area_sums, centers = [], [], [], [], []
+                    for ID_part in ID_parts:
+                        num_comp, indexed_map, stat, center = cv2.connectedComponentsWithStats(ID_part, connectivity=8)
+
+                        """
+                        num_comp : number of components, including background
+                        indexed_map : indexed map
+                        stat : left(x), top(y), w, h, area(pixel count)
+                        center : center positions of each component
+                        """
+                        num_comps.append(num_comp)
+                        indexed_maps.append(indexed_map)
+                        stat[0, -1] = 0 # set background pixel count to 0
+                        stats.append(stat)
+                        part_id_area_sums.append(np.sum(stat[:, -1]))
+                        centers.append(center)
+
+                    # choose part id from unused parts, which has largest pixel counts
+                    look_up_part_ids = args.unused_parts[step_num]
+                    max_pixels_look_up_part_id = 0
+                    max_pixels = 0
+                    for look_up_part_id in look_up_part_ids:
+                        if part_id_area_sums[look_up_part_id] > max_pixels:
+                            max_pixels = part_id_area_sums[look_up_part_id]
+                            max_pixels_look_up_part_id = look_up_part_id
+                    if max_pixels < 50:
+                        # too small
+                        max_pixels = 0
+                        max_pixels_look_up_part_id = 0
+
+                    # choose largest component of that part id
+                    index = np.argmax(stats[max_pixels_look_up_part_id][:, -1])
+
+                    # add to ID_new
+                    ID_part_to_add = np.where(indexed_maps[max_pixels_look_up_part_id] == index, max_pixels_look_up_part_id, 0).astype(np.uint8)
+                    ID_part_to_add_color = np.zeros((_H, _W, 3)).astype(np.uint8)
+                    for h in range(_H):
+                        for w in range(_W):
+                            ID_part_to_add_color[h, w, :] = color(ID_part_to_add[h, w])
+                    ID_new_modified = ID_new.astype(np.int) + ID_part_to_add.astype(np.int)
+                    assert np.any(ID_new_modified <= 255), 'ID_new_modified pixels values exceed 255'
+                    ID_new_modified = ID_new_modified.astype(np.uint8)
+                    ID_new_modified_color = ID_new_color + ID_part_to_add_color
+                    if args.opt.save_pose_prediction_maps:
+                        cv2.imwrite(save_path + '/STEP{}_ID_new_modified.png'.format(step_num), ID_new_modified_color)
+                    print('Added "New" at step {} : part{} (part0 means none added)'.format(step_num, max_pixels_look_up_part_id)) #blue
+                    # print('pixel counts : {}'.format(max_pixels)) #blue
+
+                    # update self.used_parst, self.unused_parts, self.cad_models
+                    if max_pixels_look_up_part_id != 0:
+                        args.used_parts[step_num].append(max_pixels_look_up_part_id)
+                        args.used_parts[step_num].sort()
+                        args.unused_parts[step_num + 1].remove(max_pixels_look_up_part_id)
+                        args.cad_models[step_num].append('part' + str(max_pixels_look_up_part_id))
+
+
+            # apply to ID
+            if max_pixels == 0:
+                ID = ID_new
+            else:
+                ID = ID_new_modified
 
             # PnP
             args.pose_save_dict['000000'][str(step_num).zfill(6)] = []
             args.pose_return_dict[step_num] = []
 
-            obj_ids = [args.cad_names.index(model) for model in cad_models]
+            obj_ids = [args.cad_names.index(model) + 1 for model in cad_models]
             for obj_id in obj_ids:
-                R, T = self.PnP(obj_id, ID, U, V, W, self.K)
+                R, T = self.PnP(obj_id, ID, U, V, W, args.K)
                 RT = np.concatenate((R, T), axis=1)
                 args.pose_return_dict[step_num].append(RT)
                 temp_dict = {}
@@ -153,7 +255,7 @@ class InitialPoseEstimation():
         U = U.flatten()
         V = V.flatten()
         W = W.flatten()
-        correspondence_dict = self.correspondence_dicts[obj_id]
+        correspondence_dict = self.correspondence_dicts[obj_id - 1]
         mapping_2d = []
         mapping_3d = []
         YX = []
@@ -175,7 +277,7 @@ class InitialPoseEstimation():
             rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
             return rot, tvecs
         else:
-            return np.zeros((3, 3)), np.zeros((3, 1))
+            return np.eye(3), np.array([0, 0, 25]).reshape(3, 1)
 
 
     def save_part_id_pose(self, args, step_num, matched_poses):
@@ -191,7 +293,7 @@ class InitialPoseEstimation():
             ax[1].set_title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
             if not os.path.exists(args.opt.part_id_pose_path):
                 os.makedirs(args.opt.part_id_pose_path)
-            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i))
+            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i + 1))
             plt.close()
 
 

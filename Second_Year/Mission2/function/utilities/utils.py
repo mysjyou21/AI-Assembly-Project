@@ -40,7 +40,122 @@ def diamond_se(r):
             kernel[2 * r - i, r - i:r + i + 1] = 1
         kernel[r, :] = 1
         return kernel
-    
+
+
+def resize_cut(img):    # JH
+    """
+    Resize given image to stefan image size. (height=2480, width=1748)
+    If aspect ratio of given image is differ to that of stefan image,
+    then crop right/left or upper/lower side of given image properly.
+
+    Input
+        img: 2-channel or 3-channel image
+
+    Output
+        img_resized: resized 3-channel image with shape (2480, 1748, 3)
+    """
+    # Stefan size
+    H_stefan, W_stefan = 2480, 1748
+
+    # img size
+    H_img, W_img = img.shape[:2]
+
+    H_target = H_stefan
+    W_temp = int(W_img * H_stefan / H_img)
+    img_temp = cv.resize(img, (W_temp, H_target), interpolation=cv.INTER_AREA)
+
+    # if W_temp is longer than W_stefan, crop left & right side of image
+    if W_temp > W_stefan:
+        diff_W = W_temp - W_stefan
+        margin_left = diff_W // 2
+        margin_right = diff_W - margin_left
+        img_resized = img_temp[:, margin_left:-margin_right]
+    # if W_temp is shorter than W_stefan, white-pad left & right side of image
+    elif W_temp < W_stefan:
+        diff_W = W_stefan - W_temp
+        margin_left = diff_W // 2
+        margin_right = diff_W - margin_left
+        img_resized = np.ones((H_stefan, W_stefan, 3), dtype=np.uint8) if len(img.shape) == 3 else np.ones((H_stefan, W_stefan), dtype=np.uint8)
+        img_resized[:, margin_left:-margin_right] = img_temp
+    else:
+        img_resized = img_temp
+
+    return img_resized
+
+
+def prep_carpet(img):   # JH
+    """
+    Make gray-color region (like carpet in 'stefan-03.png') to white.
+
+    Input
+        img: 3-channel or 2-channel image
+
+    Output
+        img_masked: processed image
+    """
+    if len(img.shape) == 3:
+        img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
+    else:
+        img_gray = np.copy(img)
+
+    img_gray = 255 - img_gray
+
+    # carpet pixel value in stefan-03.png is 44 (211 before inverting)
+    # Make carpet-shape mask
+    margin = 20
+    carpet_pixel_value = 44
+    threshold_min = carpet_pixel_value - margin
+    threshold_max = carpet_pixel_value + margin
+    mask = (img_gray >= threshold_min) * (img_gray < threshold_max)
+    mask = 1 - np.uint8(mask)
+    if len(img.shape) == 3:
+        mask = np.stack((mask, mask, mask), axis=2)
+
+    # Get masked image
+    img_masked = mask * (255 - img)
+    img_masked = 255 - img_masked
+
+    return img_masked
+
+
+def is_valid_cut(img):  # JH
+    """
+    Return True if given cut is indicating assembly step.
+    Return False otherwise. (e.g., first cut of assembly images, material-only images...)
+
+    Input
+        img: 2-channel or 3-channel image
+
+    Output
+         is_valid: bool.
+         True if input image is valid, otherwise False.
+    """
+    ## Make binarized inverted grayscale image
+    if len(img.shape) == 3:
+        img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
+    else:
+        img_gray = img
+    img_inv = 255 - img_gray
+
+    ## Find step number using erosion. ##
+    # 1. Erode left-upper side of image
+    left_upper_bbox = [144, 179, 475, 383]  # [x1, y1, x2, y2]
+    [x1, y1, x2, y2] = left_upper_bbox
+    img_left_upper = img_inv[y1:y2, x1:x2]
+    _, img_inv = cv.threshold(img_left_upper, thresh=100, maxval=255, type=cv.THRESH_BINARY)
+    kernel = diamond_se(5)
+    img_eroded = cv.erode(img_left_upper, kernel, iterations=1)
+    # 2. If mean pixel value of eroded image is between 2 and 10, given cut is valid
+    mean_value = np.mean(img_eroded)
+    threshold_min = 1.
+    threshold_max = 10.
+    if threshold_min < mean_value < threshold_max:
+        is_valid = True
+    else:
+        is_valid = False
+    return is_valid
+
+
 def set_steps_from_cut(I, current_step_num=1):
     """
     조립도가 순서대로 주어진다는 가정 하에 짰음.
@@ -176,7 +291,7 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
     #(circle을 못 찾아도 grouping은 정상 작동하도록 이렇게 코딩했었음))
 
     for rectangle in rectangles_list:
-        x_rec, y_rec, w_rec, h_rec = rectangle
+        x_rec, y_rec, w_rec, h_rec = rectangle[:4]
         for obj_list in [circles_list, connectors_list, connectors_serial_list, connectors_mult_list, tools_list]:
             for idx, obj in enumerate(obj_list):
                 x_obj, y_obj, w_obj, h_obj = obj[:4]
@@ -234,18 +349,21 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
         y1_list = []
         x2_list = []
         y2_list = []
+        c_list = []     # confidence list
         for idx in indices:
-            x, y, w, h = circles[idx]
+            x, y, w, h, c = circles[idx]
             x1_list.append(x)
             y1_list.append(y)
             x2_list.append(x + w)
             y2_list.append(y + h)
+            c_list.append(c)
         x_new = np.min(x1_list)
         y_new = np.min(y1_list)
         w_new = np.max(x2_list) - x_new
         h_new = np.max(y2_list) - y_new
+        c_new = np.min(c_list)
         # circles_new.append([x_new, y_new, w_new, h_new, group_idx])
-        circles_new.append([x_new, y_new, w_new, h_new])
+        circles_new.append([x_new, y_new, w_new, h_new, c_new])
 
     # 인접한 원들끼리 grouping이 발생했으면 is_merged=True, 그렇지 않으면 False
     if len(circles) != len(circles_new):
@@ -277,7 +395,7 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
                     except:
                         serials_OCR_list = [list(x) for x in serials_OCR_list] # Isaac
                         serials_OCR_list[n].append(group_idx)# Isaac
-                if obj_list == connectors_mult_list:
+                elif obj_list == connectors_mult_list:
                     try:
                         mults_OCR_list[n].append(group_idx)# Isaac
                     except:
@@ -332,11 +450,12 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
                 except:
                     # import ipdb; ipdb.set_trace(context=21) #red # Isaac
                     print() # Isaac
-            else:
-                bb = old_obj[0:-1]
-                
+            elif old_obj_list in [connectors_list, connectors_serial_list, tools_list]:
                 group_idx = old_obj[-1]
-                new_obj_list[group_idx].append(bb)
+                new_obj_list[group_idx].append(old_obj[0:5])
+            else:   # old_obj_list is connectors_mult_list
+                group_idx = old_obj[-1]
+                new_obj_list[group_idx].append(old_obj[0:4])
 
     # serial은 있는데 mult가 빈 list 인 경우, mult_list를 [['1']]로 replace
     for n, serial_OCR_list in enumerate(serials_OCR_list_new):

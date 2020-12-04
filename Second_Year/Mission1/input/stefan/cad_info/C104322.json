@@ -1,0 +1,28 @@
+{
+    "File_name": "C104322",
+    "data": {
+        "PartName": "C104322.STEP",
+        "SizeToAxisX": "60",
+        "SizeToAxisY": "11.3",
+        "SizeToAxisZ": "11.3",
+        "CenterPointX": "30",
+        "CenterPointY": "0",
+        "CenterPointZ": "0",
+        "MinPointX": "0",
+        "MinPointY": "-5.65",
+        "MinPointZ": "-5.65",
+        "MaxPointX": "60",
+        "MaxPointY": "5.65",
+        "MaxPointZ": "5.65",
+        "CenterFrom_X": "3.888889",
+        "CenterFrom_Y": "0",
+        "CenterFrom_Z": "0",
+        "CenterTo_X": "60",
+        "CenterTo_Y": "0",
+        "CenterTo_Z": "0",
+        "CenterAxisDir_X": "1",
+        "CenterAxisDir_Y": "0",
+        "CenterAxisDir_Z": "0",
+        "Radius": "3"
+    }
+}

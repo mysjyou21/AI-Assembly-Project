@@ -1,0 +1,51 @@
+{
+    "File_name": "step1_b",
+    "data": {
+        "PartName": "STEP1b.STL",
+		"MinPointX": 112.00003051757812,
+		"MinPointY": -14.500003814697266,
+		"MinPointZ": 20.0,
+        "hole": {
+			"C122620_3_hole_1": {
+				"CenterX": -112.00006103515625,
+				"CenterY": -23.000011444091797,
+				"CenterZ": 30.000009536743164
+			},
+			"C122620_4_hole_1": {
+				"CenterX": 112.00006103515625,
+				"CenterY": -23.000011444091797,
+				"CenterZ": 30.000009536743164
+			},
+			"part2_1_hole_1": {
+				"CenterX": -170.00003051757812,
+				"CenterY": -16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part2_1_hole_2": {
+				"CenterX": 170.00003051757812,
+				"CenterY": -16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part2_1_hole_3": {
+				"CenterX": -170.00003051757812,
+				"CenterY": 0.0,
+				"CenterZ": 10.0
+			},
+			"part2_1_hole_4": {
+				"CenterX": 170.00003051757812,
+				"CenterY": 0.0,
+				"CenterZ": 10.0
+			},
+			"part2_1_hole_5": {
+				"CenterX": -170.00003051757812,
+				"CenterY": 16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part2_1_hole_6": {
+				"CenterX": 170.00003051757812,
+				"CenterY": 16.000003814697266,
+				"CenterZ": 10.0
+			}
+		}
+	}
+}

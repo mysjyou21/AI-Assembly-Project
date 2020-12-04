@@ -1,0 +1,11 @@
+PartName,SizeToAxisX,SizeToAxisY,SizeToAxisZ
+step1b.stl,270,50,40
+hole_num,CenterX,CenterY,CenterZ
+part3_1-hole_0,-135,-16,10
+part3_1-hole_1,135,-16,10
+part3_1-hole_2,-135,0,10
+part3_1-hole_3,135,0,10
+part3_1-hole_4,-135,16,10
+part3_1-hole_5,135,16,10
+C122620_3-hole_1,-80,-24,30
+C122620_4-hole_1,80,-24,30

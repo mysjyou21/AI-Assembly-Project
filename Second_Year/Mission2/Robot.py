@@ -7,9 +7,6 @@ sys.path.append('./function')
 sys.path.append('./function/OCR')
 sys.path.append('./function/Pose')
 sys.path.append('./function/utilities')
-sys.path.append('./function/retrieval/codes')
-sys.path.append('./function/retrieval/codes/miscc')
-sys.path.append('./function/retrieval/render')
 from config import *
 from function.utilities.utils import *  # set_connectors, set_steps_from_cut
 from function.frcnn.DetectionModel import DetectionModel
@@ -18,10 +15,12 @@ from function.bubbles import *
 from function.numbers import *
 from function.mission_output import *
 from function.OCRs_new import *
-from function.retrieval.codes.DCA import DCA
-from function.retrieval.render.render_run import *
 from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
 from function.hole import *
+from function.Grouping_mid.hole_loader import base_loader, mid_loader
+from function.Grouping_mid.grouping_RT import transform_hole, baseRT_to_midRT
+from function.Hole_detection.MSN2_hole_detector import MSN2_hole_detector
+
 from pathlib import Path
 import json
 import shutil
@@ -53,15 +52,11 @@ class Assembly():
         with self.graph_OCR.as_default():
             self.sess_OCR = tf.Session(config=config)
             self.OCR_model = OCRModel(self)
-        self.graph_retrieval = tf.Graph()
-        with self.graph_retrieval.as_default():
-            self.sess_retrieval = tf.Session(config=config)
-            self.retrieval_model = DCA(self)
         self.graph_pose = tf.Graph()
         with self.graph_pose.as_default():
             self.sess_pose = tf.Session(config=config)
             self.pose_model = InitialPoseEstimation(self)
-
+        self.hole_detector_init = MSN2_hole_detector(self.opt)
         # Detection variables
         # component detection results, (x, y, w, h)
         self.circles_loc = {}
@@ -72,27 +67,37 @@ class Assembly():
         self.connectors_mult_imgs = {}
         self.connectors_mult_loc = {}
         self.connectors_loc = {}
-        self.parts_loc = {}
+        self.parts_loc = {} # x,y,w,h,c
         self.tools_loc = {}
         self.is_merged = {}
         self.is_tool = {}
+        # 이삭 to 민우 : 이거 두 개도 중간 step부터 시작할때 loading 되게 해야 함
+        self.unused_parts = {1 : [1, 2, 3, 4, 5, 6, 7, 8]} # unused parts {step_num : list of part ids}
+        self.used_parts = {} # used parts {step_num : list of part ids}
 
         # component recognition results, string
         self.connectors_serial_OCR = {}
         self.connectors_mult_OCR = {}
 
-        # Retrieval & Pose variables
+        # Retrieval variables
         self.part_H = self.part_W = 224
-        self.parts = {}  # detected part images
+        self.parts = {}  # detected part images {step_num  : list of part images}
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
-        self.pose_return_dict = {} # {step_num : list of RT (np.array 3x4)}
-        self.pose_save_dict = {} # {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
-        self.pose_save_dict['000000'] = {}
-        self.cad_names = [os.path.basename(x).split('.')[0] for x in sorted(glob.glob(self.opt.cad_path + '/*.obj'))] # cad names
         self.cad_models = {}  # names of cad models of retrieval results
-        self.candidate_classes = []  # candidate cad models for retrieval
-        self.RTs = np.load(self.opt.pose_data_path + '/RTs.npy')
-        self.VIEW_IMGS = np.load(self.opt.pose_data_path + '/view_imgs.npy')
+        self.candidate_classes = []  # candidate cad models for retrieval (not used)
+        self.hole_pairs = {}
+
+        # Pose variables
+        self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
+        self.pose_save_dict = {} # RT of detected part images (save version) {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
+        self.pose_save_dict['000000'] = {}
+        self.cad_names = [os.path.basename(x).split('.')[0] for x in sorted(glob.glob(self.opt.cad_path + '/*.obj'))] # cad names in cad_path
+        self.K = np.array([
+            3444.4443359375,0.0,874.0,
+            0.0,3444.4443359375,1240.0,
+            0.0,0.0,1.0]).reshape(3,3) # camera intrinsic matrix
+        self.RTs = np.load(self.opt.pose_data_path + '/RTs.npy') # 48 RTs to compare with pose_network prediction
+        self.VIEW_IMGS = np.load(self.opt.pose_data_path + '/view_imgs.npy') # VIEWS to display pose output
 
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
@@ -113,28 +118,33 @@ class Assembly():
         """
 
         # Load all images in the 'self.opt.cut_path'
-        cut_paths = sorted(glob.glob(os.path.join(self.opt.cut_path, '*.png')))
+        filenames = glob.glob(os.path.join(self.opt.cut_path, "*"))
+        if os.path.basename(filenames[0]).replace('.bmp','').replace('.png','').isdigit():
+            cut_paths = sorted(filenames, key=lambda x:int(os.path.basename(x).replace('.bmp','').replace('.png',''))) #.png')))
+        elif len(filenames)>0:
+            cut_paths = sorted(filenames)
+        else:
+            print("No image in %s"%(self.opt.cut_path))
+            cut_paths = filenames
         self.cut_names = cut_paths
+        print([os.path.basename(x) for x in cut_paths])
         cuts = [np.asarray(Image.open(cut_paths[n]))[:, :, :3] for n in range(len(cut_paths))]
+        # 준형: resize, cut만 읽어올 수 있게 추가(material 말고), preprocessing(양탄자 처리)
         for cut in cuts:
             self.cuts.append(cut)
 
-        # for each img (in right order)
-        # Extract steps from a cut
         idx = 1
-        self.connectors_cuts = []
         for _, cut in enumerate(cuts):
-            step_nums, is_steps_, step_imgs_ = set_steps_from_cut(cut)
-            is_steps = [True]
-            step_imgs = [cut]
+            # resize
+            cut_resized = resize_cut(cut)
+            # preprocessing
+            cut_resized = prep_carpet(cut_resized)
+            # material 소개 cut 제외
+            if is_valid_cut(cut_resized):
+                self.steps[idx] = cut_resized
+                self.num_steps += 1
+                idx += 1
 
-            for is_step, step_img in zip(is_steps, step_imgs):
-                if is_step:
-                    self.steps[idx] = step_img
-                    self.num_steps += 1
-                    idx += 1
-                else:
-                    self.connectors_cuts.append(step_img)
 
     def detect_step_component(self, step_num, print_result=True):  # 준형
         """
@@ -142,11 +152,10 @@ class Assembly():
         step_num: corresponding step number
         print_result: Print the grouped action information as a csv format
         """
-        # Detect components
+        # Detect components  # 한 cut에 같은 부품 2번 등장하면 하나만
         self.step_connectors, self.step_tools, self.step_circles, self.step_rectangles, self.step_parts, self.step_part_info = self.component_detector(step_num)
         self.step_connectors_mult_imgs, self.step_connectors_mult_loc = self.mult_detector(step_num)
         self.step_connectors_serial_imgs, self.step_connectors_serial_loc = self.serial_detector(step_num)
-
 
         # Set components as the step's components
         self.connectors_serial_imgs[step_num] = self.step_connectors_serial_imgs
@@ -159,28 +168,34 @@ class Assembly():
         self.tools_loc[step_num] = self.step_tools
         self.parts_loc[step_num] = self.step_parts
         self.parts_info[step_num] = self.step_part_info
+        # self.base_info = ['part1', 'part2', ..., 'part6, 'part7', 'part8'']
         self.connector_serial_OCR, self.connector_mult_OCR = self.OCR(step_num)
         self.connectors_serial_OCR[step_num] = self.connector_serial_OCR
         self.connectors_mult_OCR[step_num] = self.connector_mult_OCR
         self.group_components(step_num)
 
-        # visualization(준형) - image/bounding boxes (parts 제외, OCR결과도 그림에) self.opt.group_image_path
+        # visualization(준형) - image/bounding boxes (parts 제외, OCR결과도 그림에) self.opt.group_image_path -> 수정(한 cut 이미지에), flag self.opt.detection_path에 추가로
         # num of colors in palette: 7
         palette = [(0, 0, 255), (0, 128, 255), (0, 255, 255), (0, 255, 0), (255, 128, 0), (255, 0, 128), (255, 0, 255)]
+
         num_groups = len(self.circles_loc[step_num])
-        step_img = np.copy(self.steps[step_num])
+        step_group_img = np.copy(self.steps[step_num])
 
         for n in range(num_groups):
             color = palette[n]
             # circles
             circle_loc = self.circles_loc[step_num][n]
-            x, y, w, h = circle_loc
-            cv.rectangle(step_img, (x, y), (x + w, y + h), color, 2)
+            x, y, w, h, conf = circle_loc
+            cv.rectangle(step_group_img, (x, y), (x + w, y + h), color=color, thickness=2)
+            cv2.putText(step_group_img, 'circle: %.2f' % conf, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.5,
+                        color=color, thickness=3)
             # connectors
             connectors_loc = self.connectors_loc[step_num][n]
             for loc in connectors_loc:
-                x, y, w, h = loc
-                cv.rectangle(step_img, (x, y), (x + w, y + h), color, 2)
+                x, y, w, h, conf = loc
+                cv.rectangle(step_group_img, (x, y), (x + w, y + h), color=color, thickness=2)
+                cv2.putText(step_group_img, 'connector: %.2f' % conf, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.5,
+                            color=color, thickness=3)
             # serials
             serials_loc = self.connectors_serial_loc[step_num][n]
             for i, loc in enumerate(serials_loc):
@@ -193,31 +208,77 @@ class Assembly():
                 pt4 = [int(x + w * np.cos(theta) - h * np.sin(theta)), int(y - w * np.sin(theta) - h * np.cos(theta))]
                 pts = np.array([pt1, pt2, pt3, pt4], dtype=int)
                 pts = np.reshape(pts, (-1, 1, 2))
-                cv.polylines(step_img, [pts], True, color, 2)
+                cv.polylines(step_group_img, [pts], True, color, 2)
                 # serial_OCRs
                 serial_OCR = self.connectors_serial_OCR[step_num][n][i]
                 margin = 20
                 px = int(np.min([pt[0] for pt in [pt1, pt2, pt3, pt4]]) - margin)
                 py = int(np.max([pt[1] for pt in [pt1, pt2, pt3, pt4]]) + margin)
-                cv.putText(step_img, serial_OCR, (px, py), cv.FONT_HERSHEY_COMPLEX, fontScale=0.8, color=color,
-                           thickness=2)
+                cv.putText(step_group_img, serial_OCR, (px, py), cv.FONT_HERSHEY_SIMPLEX, fontScale=1.2, color=color,
+                           thickness=3)
             # mults
             mults_loc = self.connectors_mult_loc[step_num][n]
             for i, loc in enumerate(mults_loc):
                 x, y, w, h = loc
-                cv.rectangle(step_img, (x, y), (x + w, y + h), color, 2)
+                cv.rectangle(step_group_img, (x, y), (x + w, y + h), color, 2)
                 mult_OCR = self.connectors_mult_OCR[step_num][n][i]
                 margin = 5
                 px = int(x + w / 2)
                 py = int(y - margin)
-                cv.putText(step_img, mult_OCR, (px, py), cv.FONT_HERSHEY_COMPLEX, fontScale=0.8, color=color,
-                           thickness=2)
+                cv.putText(step_group_img, mult_OCR, (px, py), cv.FONT_HERSHEY_SIMPLEX, fontScale=1.2, color=color,
+                           thickness=3)
 
-        if not os.path.exists(self.opt.group_image_path):
-            os.makedirs(self.opt.group_image_path)
+        if self.opt.save_group_image:
+            if not os.path.exists(self.opt.group_image_path):
+                os.makedirs(self.opt.group_image_path)
 
-        img_name = os.path.join(self.opt.group_image_path, '%02d.png' % step_num)
-        cv.imwrite(img_name, step_img)
+            img_name = os.path.join(self.opt.group_image_path, '%02d.png' % step_num)
+            cv.imwrite(img_name, step_group_img)
+
+        # parts
+        step_part_img = np.copy(self.steps[step_num])
+        parts_color = (255, 0, 0)
+        for n in range(len(self.parts_loc[step_num])):
+            x, y, w, h, conf = self.parts_loc[step_num][n]
+            cls = self.parts_info[step_num][n]
+            cv2.rectangle(step_part_img, (x, y), (x + w, y + h), color=parts_color, thickness=2)
+            cv2.putText(step_part_img, '%s: %.2f' % (cls, conf), (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.5,
+                        color=parts_color, thickness=3)
+
+        if self.opt.save_part_image:
+            if not os.path.exists(self.opt.part_image_path):
+                os.makedirs(self.opt.part_image_path)
+
+            img_name = os.path.join(self.opt.part_image_path, '%02d.png' % step_num)
+            cv.imwrite(img_name, step_part_img)
+
+
+
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        # 이삭 to 준형 : 이미지 cropping 하는 부분 detection 함수 내에 있는게 맞는 것 같아서 pose 함수에서 여기로 옮김
+        # 아래쪽 것은 detection 결과를 저장하는건데, 누가 만들었었는지 기억 안남. 필요 없으면 지우셈.
+
+        # crop part images from step images with detection results
+        step_part_images = []
+        for i, crop_region in enumerate(self.parts_loc[step_num]):
+            x, y, w, h = crop_region[:4]
+            step_part_image = self.steps[step_num][y:y + h, x:x + w]
+            step_part_images.append(step_part_image)
+        self.parts[step_num] = step_part_images
+
+        # save detection result images
+        if self.opt.save_detection:
+            if not os.path.exists(self.opt.detection_path):
+                os.makedirs(self.opt.detection_path)
+            for i in range(len(self.parts[step_num])):
+                cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
+                            self.parts[step_num][i])
+        #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        # update self.used_parts[step_num] / self.unused_parts[step_num + 1]
+        self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
+        self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
+
 
     def component_detector(self, step_num):  # 준형
         """ Detect the components in the step image, return the detected components' locations (x, y, w, h, group_index)
@@ -253,7 +314,7 @@ class Assembly():
         connectivity = ''
         step_parts_loc_origin = step_parts_loc.copy()
         y1, y2, x1, x2 = step_img.shape[0], 0, step_img.shape[1], 0
-        for x, y, w, h in step_parts_loc:
+        for x, y, w, h, _ in step_parts_loc:
             if x < x1:
                 x1 = x
             if y < y1:
@@ -263,103 +324,18 @@ class Assembly():
             if y + h > y2:
                 y2 = y + h
         step_roi = step_img[y1 - 20:y2 + 30, x1 - 50:x2 + 20]
-#
-#        ### roi modified for step_5 ###
-#        if step_num == 3:
-#            step_roi = step_img[y1 - 100:y2 + 30, x1 - 50:x2 + 20]
-#
-#        elif step_num == 5:
-#            step_roi = step_img[y1 - 50:y2 + 30, x1 - 50:x2 + 20]
-#
-#        elif step_num == 6:
-#            step_roi = step_img[y1 - 200:y2 + 200, x1 - 100:x2 + 100]
-#
-#        for i in range(len(step_parts_loc)):
-#            x, y, w, h = step_parts_loc[i]
-#            step_parts_loc[i] = [x - (x1 - 50), y - (y1 - 20), w, h]
-#
+
         step_connectors_OCR = self.connectors_serial_OCR[step_num]
-#
-#        ud_check = False if (step_num == 5 or step_num == 9) else True
-#        in_check = False if step_num == 9 else True
-#        h_obj_th = 50 if (step_num == 2 or step_num == 3) else 100  # small when detection result is not correct..
-#        if len(step_connectors_OCR) > 0:
-#            if len(step_connectors_OCR[0]) > 0:
-#                step_connector_OCR = step_connectors_OCR[0][0]  # assumption: only one OCR result in one step
-#            else:
-#                step_connector_OCR = None
-#        else:
-#            step_connector_OCR = None
-#        if step_connector_OCR == '501350':  # temporary
-#            step_connector_OCR = '101350'
-#        connect_step_num_list = [1, 2, 3, 4, 5, 6, 9]
-#        step_connector = step_connector_OCR if step_num in connect_step_num_list else None
-#
+
         if step_num == 1:
             if os.path.exists(self.opt.part_hole_path):
                 shutil.rmtree(self.opt.part_hole_path)
         if not os.path.exists(self.opt.part_hole_path):
             os.makedirs(self.opt.part_hole_path)
-#
-#        ############################## Hyperparameters modified for each step ########################################
-#        rate_max_th = None
-#        if step_num == 1:
-#            h_min_th = 50
-#            h_max_th = 150
-#            rate_min_th = 4
-#
-#        elif step_num == 2:
-#            h_min_th = 22
-#            h_max_th = 100
-#            rate_min_th = 4
-#
-#        elif step_num == 3:
-#            h_min_th = 1
-#            h_max_th = 150
-#            rate_min_th = 1
-#
-#        elif step_num == 4:
-#            h_min_th = 30
-#            h_max_th = 150
-#            rate_min_th = 4
-#
-#        elif step_num == 5:
-#            h_min_th = 55
-#            h_max_th = 120
-#            rate_min_th = 4
-#
-#        elif step_num == 6:
-#            h_min_th = 90
-#            h_max_th = 150
-#            #     h_min_th = 10
-#            #     h_max_th = 500
-#            rate_min_th = 4
-#
-#        elif step_num == 7 or step_num == 8:
-#            h_min_th = 15
-#            h_max_th = 16
-#            rate_min_th = 4
-#
-#        elif step_num == 9:
-#            h_min_th = 65
-#            h_max_th = 150
-#            rate_min_th = 15
-#            rate_max_th = 19
-#
-#        else:
-#            h_min_th = 15
-#            h_max_th = 150
-#            rate_min_th = 4
-#        hole_info = detect_fasteners(step_roi, os.path.join(self.opt.part_hole_path, '%.2d.png' % step_num),
-#                                     step_parts_loc, step_parts_id, ud_check, in_check, h_obj_th, h_min_th, h_max_th,
-#                                     rate_min_th, rate_max_th)
-#        ###########################################################################################
-#        hole_info, connectivity = convert_view_assembly_to_CAD(hole_info, step_parts_id, step_parts_pose,
-#                                                               self.parts_loc[step_num], step_connector)
-#
+
         # visualization
         for i in range(len(step_parts_loc_origin)):
-            x, y, w, h = step_parts_loc_origin[i]
+            x, y, w, h, _ = step_parts_loc_origin[i]
             step_img = cv2.rectangle(step_img, (x, y), (x + w, y + h), color=(255, 0, 0), thickness=2)
             step_img = cv2.putText(step_img, step_parts_id[i], (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1,
                                    color=(255, 0, 0), thickness=2)
@@ -413,7 +389,6 @@ class Assembly():
         step_connectors_serial = self.connectors_serial_loc[step_num]
         step_connectors_mult = self.connectors_mult_loc[step_num]
         step_tools = self.tools_loc[step_num]
-        step_parts = self.parts_loc[step_num]
         step_connectors_serial_OCR = self.connectors_serial_OCR[step_num]
         step_connectors_mult_OCR = self.connectors_mult_OCR[step_num]
 
@@ -455,257 +430,184 @@ class Assembly():
 
         connector_serial_OCR = []
         connector_mult_OCR = []
+        true_serials = [['100001'], ['101350'], ['122620'], ['104322'], ['122925']]
 
         for serials in serials_list:
             serial_OCR = self.OCR_model.run_OCR_serial(args=self, imgs=serials)
+
+            if (serial_OCR not in true_serials) and (serial_OCR != ''):
+                count = [0, 0, 0, 0, 0]
+                for idx, key in enumerate(true_serials):
+                    for i in range(6):
+                        if serial_OCR[i] == key[0][i]: count[idx] = count[idx] + 1
+                max_idx = np.argmax(np.asarray(count))
+                serial_OCR = true_serials[max_idx][0]
+
             connector_serial_OCR.append(serial_OCR)
+
         for mults in mults_list:
             mult_OCR = self.OCR_model.run_OCR_mult(args=self, imgs=mults)
             connector_mult_OCR.append(mult_OCR)
 
         return connector_serial_OCR, connector_mult_OCR
 
-    def rendering(self, step_num, list_added_obj, list_added_stl):
-        if len(list_added_obj) != 0 or len(list_added_stl) != 0 or step_num == 1:
+    def predict_pose(self, step_num):
+        """ Pose prediction
+        Pose prediction of detected regions of image.
+        Args:
+            step_num: step number
+        Uses:
+            self.steps : (dict) {step_num : step image }
+                step image : (array) (uint8)
+                        step images
 
-            ### Prior work for rendering(copy Cad file to new_cad directory in cad directory) ###
-            cad_path = self.opt.cad_path
-            list_converted_obj = []
-            if len(list_added_stl) != 0:
-                stl_to_obj(self)
-                list_converted_obj = [os.path.splitext(s)[0] + '.obj' for s in list_added_stl]
+            self.parts_loc : (dict) {step_num : (list) bbox }
+                bbox : (list) (int) x, y, w, h
+                        detection bbox results
 
-            list_added_obj = sorted(list(set(list_added_obj) | set(list_converted_obj)))
+        Updates:
+            self.parts : (dict) {step_num : (list) part images }
+                part images : (array) (uint8)
 
-            ### Point Cloud ###
-            center_model(self)
-            create_pointcloud(self, list_added_obj)
+                        part images cropped from step images
 
-            ### Rendering ###
-            # views_gray_black (for retrieval)
-            create_rendering(self, list_added_obj, 'views_gray_black')
-            # views (for pose)
-            create_rendering(self, list_added_obj, 'views')
+            self.cad_models : (dict) {step_num : (list) (str) classified cad names }
 
-            ### Posterior work after rendering###
-            files = sorted(glob.glob(os.path.join(self.opt.cad_path, '*.STL')))
-            for file in files:
-                filename = os.path.splitext(file)[0]
-                if platform.system() == 'Windows':
-                    os.remove(str(Path(filename + '.obj')))
-                else:
-                    os.system('rm ' + filename + '.obj')
+                        detection class results + "New" from pose segmentation map
+            self.pose_return_dict : (dict) {step_num : (list) (array) [3, 4] RT of pose prediction }
 
+            matched_poses : (list) (int) pose prediction as number 0~47
+        Returns:
+            None
 
-    def retrieve_part(self, step_num, list_added_obj=[], list_added_stl=[]):  # 민우
-        """ Retrieve part identity from CAD models, part images as queries
-        return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
-            """
-
-        cad_list = sorted(glob.glob(self.opt.cad_path + '/*'))
-        cad_list = [os.path.splitext(os.path.basename(v))[0] for v in cad_list if os.path.splitext(v)[-1] != '']
-#        prev_retrieval_classes = []
-#        if step_num > 1:
-#            prev_retrieval_classes = []
-#            for i in range(1, step_num):
-#                for model in self.cad_models[i]:
-#                    prev_retrieval_classes.append(model)
-#        self.candidate_classes = sorted(list(set(cad_list) - set(prev_retrieval_classes)))
-        self.candidate_classes = cad_list
-        if step_num == 1:
-            self.candidate_classes = [v for v in self.candidate_classes if 'part' in v]
-
-        # crop part images from step images with detection results
-        step_part_images = []
-        for i, crop_region in enumerate(self.parts_loc[step_num]):
-            x, y, w, h = crop_region[:4]
-            step_part_image = self.steps[step_num][y:y + h, x:x + w]
-            step_part_images.append(step_part_image)
-        self.parts[step_num] = step_part_images
-
-        # save detection result images
-        if self.opt.save_detection:
-            if not os.path.exists(self.opt.detection_path):
-                os.makedirs(self.opt.detection_path)
-            for i in range(len(self.parts[step_num])):
-                cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
-                            self.parts[step_num][i])
-
-#        retrieved_classes = self.retrieval_model.test(self, step_num, self.candidate_classes)
-        retrieved_classes = self.parts_info[step_num]
-        self.cad_models[step_num] = retrieved_classes
-        print('\nretrieved classes : ', retrieved_classes) # magenta
-        assert len(self.parts[step_num]) == len(
-            self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
-
-        # pose
-        self.parts_info[step_num]
-        self.pose_model.test(self, step_num)
-
+        """
+        # ensure directories
+        # :resume from this step functionality
         self.part_dir = self.opt.cad_path + '/' + str(step_num)
         if not os.path.exists(self.part_dir):
             os.mkdir(self.part_dir)
 
-        #==================================================================================================
-        # 재우 : update RT values in self.pose_return_dict # {step_num : list of RT (np.array 3x4)}
-        #==================================================================================================
+        # detection classification results
+        # retrieved_classes = self.parts_info[step_num]
+        self.cad_models[step_num] = self.parts_info[step_num].copy()
+        assert len(self.parts[step_num]) == len(self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
+        print('')
+        print('classified classes : ', self.cad_models[step_num]) #blue
 
+        # pose prediction
+        # update self.pose_return_dict, self.cad_models
+        self.pose_model.test(self, step_num)
+
+
+        ########################################################################################
+        # 이삭 to 민우 : 이거 옮겨 간다고 하지 않았나...
         def closest_gt_RT_index(RT_pred):
             return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
+
         matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
         if self.opt.save_part_id_pose:
             self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
-        # hole
-        holes, connectivity = self.hole_detector(step_num, retrieved_classes, matched_poses)
-        self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
+        print('modified classified classes : ', self.cad_models[step_num]) #blue
+        classified_classes = self.cad_models[step_num]
+        # parts_info update
+        print('matched_poses', matched_poses) #blue
+        # update self.parts_info[step_num]
+        holes = [[] for x in range(len(matched_poses))]
+        connectivity = ''
+        self.parts_info[step_num] = list(zip(classified_classes, matched_poses, holes))  #-> 앞으로
+        self.parts_info[step_num] = [list(x) for x in self.parts_info[step_num]]
         self.parts_info[step_num].append(connectivity)
-    #        print('%d parts, info: ' % (len(self.parts_info[step_num]) - 1), self.parts_info[step_num])
-    # part retrieval,pose 결과 : 이삭(query image | retrieved model image) self.opt.part_id_pose_path
-    # part hole 결과: 은지(전체 이미지에서 bb, hole 위치, label) self.opt.part_hole_path
+        print(self.parts_info[step_num])
+        ##########################################################################################
 
-    def group_as_action(self, step_num):
+    def group_as_action(self, step_num):   # action 관련 정보들을 묶어서 self.actions에 넣고 ./output에 json write
         """ Group components in action-unit
         [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
-        Update self.actions
-        """
-#        # making action dictionary
-#        f = open(os.path.join('function', 'utilities', 'action_label.csv'), 'r')  # , encoding='utf-8')
-#        csv_reader = csv.reader(f)
-#        act_dic = {}  # key: '100001' value: ['A001']
-#        next(csv_reader)  # ignore first line
-#        for line in csv_reader:
-#            part_lab = line[0]
-#            act_dic[part_lab] = line[1:]
-#        f.close()
-#
-#        cut_material = self.connectors_serial_OCR[step_num]
-#        cut_mult = self.connectors_mult_OCR[step_num]
-#
-#        if self.tools_loc[step_num] == ([] or [[]]):
-#            self.is_tool[step_num] = [0]
-#        else:
-#            self.is_tool[step_num] = self.tools_loc[step_num]
-#            for idx, tool in enumerate(self.is_tool[step_num]):
-#                self.is_tool[step_num][idx] = 1 if tool != [] else 0
-#
-#        if self.is_merged[step_num] == True:
-#            connectors, tools, circles, rectangles, parts, _ = self.component_detector(step_num)
-#            circle_num = len(circles)
-#            material_temp = self.connectors_serial_OCR[step_num]
-#            mult_temp = self.connectors_mult_OCR[step_num]
-#            cut_material = []
-#            cut_mult = []
-#
-#            self.is_tool[step_num] = []
-#
-#            for idx, circle_loc in enumerate(circles):
-#                x, y, h, w = circle_loc
-#                circle_info = []
-#                for i in range(len(connectors)):
-#                    if (x < connectors[i][0] and connectors[i][0] < x + h):
-#                        circle_info += material_temp[i]
-#                    else:
-#                        circle_info += []
-#                for j in range(len(tools)):
-#                    if (x < tools[j][0] and tools[j][0] < x + h):
-#                        self.is_tool[step_num] += [1]
-#                    else:
-#                        self.is_tool[step_num] += [0]
-#
-#                cut_material += [circle_info]
-#                cut_mult += [mult_temp]
-#
-#            if step_num == 9:  #### temp
-#                self.is_tool[step_num] = [1, 1]  ####
-#
-#        ############## mapping action #############
-#        step_action = []
-#        if (cut_material == []) and len(self.parts[step_num]) == 1:
-#            circle_action = ['A006']
-#            circle_num = ['1']
-#            self.step_action += [[[circle_action, circle_num]]]
-#
-#        for idx, material in enumerate(cut_material):
-#            if (cut_material == [[], []]) and len(self.parts[step_num]) == 2:
-#                circle_action = ['A005']
-#                circle_num = ['1']
-#                self.step_action += [[[circle_action, circle_num]]]
-#                self.connectors_mult_OCR[step_num] = circle_num
-#                self.connectors_serial_OCR[step_num] = ['']
-#                break
-#
-#            elif material == []:
-#                if self.is_tool[step_num][idx] == 1:
-#                    circle_action = ['A003']
-#                    circle_num = [str(len(self.parts_info[step_num][0][2]))]  # maybe revised ?
-#                    step_action += [[circle_action, circle_num]]
-#                    self.connectors_mult_OCR[step_num] = circle_num
-#                    self.connectors_serial_OCR[step_num] = ['']
-#            else:
-#                circle_mult = cut_mult[idx]
-#                serials, circle_action, circle_num = map_action(self, material, circle_mult, act_dic, step_num)
-#                if step_num == 9:
-#                    print(circle_num)  # temp
-#                step_action += [[circle_action, circle_num]]  # self.step_action has every step's action as element.
-#                self.connectors_serial_OCR[step_num] = serials
-#
-#        if step_action != []:
-#            self.step_action += [step_action]
-#        ################################################
-#
-#        ################### connectivity ###############################
-#        connectivity = self.parts_info[step_num][-1]
-#        part_num = len(self.parts_info[step_num]) - 1
-#        connector_num = len(self.connectors_serial_OCR[step_num])
-#
-#        if connectivity == '':
-#            if part_num > 1 and self.step_action[step_num - 1][0][0] != ['A005']:
-#                action = self.step_action[step_num - 1][0][0][0]
-#                step_action = []
-#                action_group_step = []
-#                for i in range(part_num):
-#                    hole_num = len(self.parts_info[step_num][i][2])
-#                    step_action += [[action, [str(hole_num)]]]
-#
-#                    action_group = [[""], [""], [""], [""]]
-#                    temp = [self.parts_loc[step_num][i]]
-#                    temp += self.parts_info[step_num][i]
-#                    action_group[0] = temp  # [[parts_loc[step_num], parts_info[step_num][0], ]]  # part1 loc, id, pos, hole
-#                    action_group += [self.connectors_serial_OCR[step_num], [str(hole_num)], action]  # add action mult
-#                    action_group_step += [action_group]
-#                self.actions[step_num] = action_group_step
-#
-#                self.step_action[step_num - 1] = step_action
-#                return
-#
-#            else:
-#                pass
-#        else:
-#            pass
-#
-#        #####################################################################
-#
-#        # group every action parameters - per action
-#        action_group_step = []
-#        for idx, action in enumerate(self.step_action[step_num - 1]):
-#            action_group = [[""], [""], [""], [""]]
-#            for i in range(len(self.parts_loc[step_num])):
-#                temp = [self.parts_loc[step_num][i]]
-#                temp += self.parts_info[step_num][i]
-#                action_group[i] = temp  # [[parts_loc[step_num], parts_info[step_num][0], ]]  # part1 loc, id, pos, hole
-#
-#            action_group += [self.connectors_serial_OCR[step_num],
-#                             self.step_action[step_num - 1][idx][1]]  # add action mult
-#
-#            action_group += self.step_action[step_num - 1][idx][0]  # action_label
-#            action_group_step += [action_group]
-        action_group_step = []
-        for p_ind in range(len(self.parts_loc[step_num])):
-            parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
-            temp_action_group_step = [parts_info, [''], [''], [''], [''], [''], ['']]
-            action_group_step += [temp_action_group_step]
-        self.actions[step_num] = action_group_step
+        Update self.actions """
+
+        material = self.connectors_serial_OCR[step_num]
+        circle_mult = self.connectors_mult_OCR[step_num]
+
+        f = open(os.path.join('function', 'utilities', 'action_label.csv'), 'r')  # , encoding='utf-8')
+        csv_reader = csv.reader(f)
+        act_dic = {}  # key: '100001' value: ['A001']
+        next(csv_reader)  # ignore first line
+        for line in csv_reader:
+            part_lab = line[0]
+            act_dic[part_lab] = line[1:]
+        f.close()
+        connectivity = self.parts_info[step_num][-1]
+
+        if len(material) == 1 and material != [[]]:
+            serials, circle_action, circle_num = map_action(self, material[0], circle_mult[0], act_dic, step_num)
+            if connectivity == '': # material은 1개 인데 connectivity가 X -> step1 같은 상황
+                action_group_step = []
+                for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
+                    parts_info = self.parts_info[step_num][p_ind]
+#                    parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
+                    temp_action_group_step = [parts_info, [''], [''], [''], serials, circle_num, circle_action]
+                    action_group_step += [temp_action_group_step]
+                self.actions[step_num] = action_group_step
+
+            else: # material은 1개 인데 part가 여러개인 상황 -> 즉 모든 부품을 하나의 action으로 연결.
+                action_group_step = []
+                temp_action_group_step = [[''], [''], [''], [''], material, circle_mult, ['']]
+                for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
+                    parts_info = self.parts_info[step_num][p_ind]
+#                    parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
+                    temp_action_group_step[p_ind] = parts_info
+                    action_group_step += [temp_action_group_step]
+                self.actions[step_num] = action_group_step
+
+
+        else:  # 1. error 거나(material이 여러개) 2. circle이 두개 라서 len==2인데 action은 1개 !
+            action_group_step = []
+            for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
+                parts_info = self.parts_info[step_num][p_ind]
+#                parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
+                temp_action_group_step = [parts_info, [''], [''], [''], material, circle_mult, ['']]
+                action_group_step += [temp_action_group_step]
+            self.actions[step_num] = action_group_step
+
+    def group_RT_mid(self, step_num):
+        ######### detection에서 검출된 기본부품의 pose 반영 hole 위치 #######
+        base_RT_list = self.pose_return_dict[step_num]
+        base_id_list = [base_part[0] for base_part in self.parts_info[step_num][:-1]]
+
+        if (len(base_id_list) < 2):
+            pass  ######## 설명서내에 검출된 기본 part가 2개 미만인 경우 #########
+
+        base_hole_dict = {}
+        for i, id in enumerate(base_id_list):
+            base_hole_XYZ = base_loader(id, self.opt.hole_path)
+            base_RT = base_RT_list[i]
+            base_hole_dict[id] = transform_hole(base_RT, base_hole_XYZ)
+
+
+        ######## 중간산출물 hole 위치 loading  ##########
+        mid_hole_dict = mid_loader('step%i'%(step_num-1), self.opt.hole_path)
+
+        mid_RT, mid_id_list, find_mid = baseRT_to_midRT(base_hole_dict, mid_hole_dict)
+
+        self.find_mid = find_mid
+        self.mid_id_list = mid_id_list
+        self.mid_RT = mid_RT
+
+        if find_mid:
+            for key in mid_id_list:
+                if key in base_id_list:
+                    idx = base_id_list.index(key)
+                    base_RT_list[idx] = mid_RT
+                else:
+                    base_id_list.append(key)
+                    base_RT_list.append(mid_RT)
+
+            self.pose_return_dict[step_num] = base_RT_list
+            self.parts_info[step_num] = list(zip(base_id_list, base_RT_list))
+        else:
+            pass
+
 
     def write_csv_mission(self, step_num, option=0):  # 은지(전체파트), 선지(write_csv_mission2부분 action labeling관련 다듬기)
         """ Write the results in csv file, option=1, 2, 3 is 1-year challenge's output """
@@ -719,15 +621,41 @@ class Assembly():
             with open('./function/utilities/label_to_pose.json', 'r') as f:
                 pose_dic = json.load(f)
             step_actions = self.actions[step_num]
+            step_hole_pair = self.hole_pairs.get(step_num, [])
+#            print('hole %d'%(step_num), step_hole_pair)
             for action in step_actions:
                 for i in range(0, 4):
-                    part = action[i]
+                    part = list(action[i])
                     if part[0] != '':
-                        part_pose_ind = part[2]
+                        part_pose_ind = part[1]
                         part_pose_lab = pose_dic[str(part_pose_ind)]
-                        action[i][2] = part_pose_lab.split('_')
+                        action[i][1] = part_pose_lab.split('_')
+            if step_hole_pair != []:
+                step_actions[0].append(step_hole_pair)
             if step_num == 1:
                 if os.path.exists(self.opt.csv_dir):
                     shutil.rmtree(self.opt.csv_dir)
 
             write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)
+
+    def msn2_hole_detector(self, step_num):
+
+        if self.find_mid:
+            step_images = self.steps
+            parts_info = self.parts_info
+            connectors = self.connectors_serial_OCR
+            mults = self.connectors_mult_OCR
+            K = self.K
+            mid_RT = self.mid_RT
+            mid_id_list = self.mid_id_list
+            RTs_dict = self.RTs
+            hole_pairs = self.hole_pairs
+            component_list = []
+
+            parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list)
+
+            self.parts_info = parts_info
+            self.hole_pairs = hole_pairs
+        else:
+            pass

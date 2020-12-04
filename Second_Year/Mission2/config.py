@@ -4,7 +4,7 @@ import os
 
 def parse_args(description='Robot'):
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--assembly_name', default='mission2_syn')
+    parser.add_argument('--assembly_name', default='stefan')
     parser.add_argument('--input_path', default='./input')
     parser.add_argument('--intermediate_results_path', default='./intermediate_results')
     parser.add_argument('--det_config1_name', default='./model/detection/fine_tuned/12.pickle')
@@ -26,11 +26,14 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_mult', default=True)
     parser.add_argument('--save_mult_npy', default=False)
     parser.add_argument('--save_mult_black', default=False)
-    parser.add_argument('--save_group_image', default=False)
+    parser.add_argument('--save_group_image', default=True)
+    parser.add_argument('--save_part_image', default=True)
     parser.add_argument('--save_pose_prediction_maps', default=False)
     parser.add_argument('--save_part_id_pose', default=True)
     parser.add_argument('--gpu', default='0')
     parser.add_argument('--print_time', default=False)
+    parser.add_argument('--mid_RT_on', default=True)
+    parser.add_argument('--hole_detection_on', default=True)
 
     parser.add_argument('--step_num', default=False, type=int)
 
@@ -43,6 +46,7 @@ def init_args(description='Robot'):
     opt = parse_args(description)
 
     opt.assembly_path = os.path.join(opt.input_path, opt.assembly_name)
+    opt.hole_path = os.path.join(opt.assembly_path, 'cad_info')
     opt.cut_path = os.path.join(opt.input_path, opt.assembly_name, 'cuts')
     opt.cad_path = os.path.join(opt.input_path, opt.assembly_name, 'cad')
     opt.point_cloud_path = os.path.join(opt.cad_path, 'point_cloud')
@@ -65,6 +69,7 @@ def init_args(description='Robot'):
     opt.mult_path = os.path.join(opt.intermediate_results_path, 'mult')
     opt.mult_black_path = os.path.join(opt.intermediate_results_path, 'mult_black')
     opt.group_image_path = os.path.join(opt.intermediate_results_path, 'group_image')
+    opt.part_image_path = os.path.join(opt.intermediate_results_path, 'part_image')
     opt.part_id_pose_path = os.path.join(opt.intermediate_results_path, 'part_id_pose')
     opt.part_hole_path = os.path.join(opt.intermediate_results_path, 'part_hole')
     opt.initial_pose_estimation_path = os.path.join(opt.intermediate_results_path, 'initial_pose_estimation')
@@ -85,6 +90,10 @@ def init_args(description='Robot'):
     opt.print_serial_progress = string2bool(opt.print_serial_progress)
     opt.save_mult_black = string2bool(opt.save_mult_black)
     opt.save_group_image = string2bool(opt.save_group_image)
+    opt.save_part_image = string2bool(opt.save_part_image)
+    opt.save_pose_prediction_maps = string2bool(opt.save_pose_prediction_maps)
+    opt.save_part_id_pose = string2bool(opt.save_part_id_pose)
+    opt.mid_RT_on = string2bool(opt.mid_RT_on)
 
     return opt
 

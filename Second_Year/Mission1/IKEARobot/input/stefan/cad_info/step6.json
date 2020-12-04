@@ -1,0 +1,54 @@
+{
+    "File_name": "step6",
+    "data": {
+        "PartName": "step6.stl",
+        "SizeToAxisX": "464.67",
+        "SizeToAxisY": "900.57",
+        "SizeToAxisZ": "400",
+        "MinPointX": "0",
+        "MinPointY": "0",
+        "MinPointZ": "-335",
+        "hole": {
+            "C122620_1_hole_1": {
+                "CenterX": "26.529",
+                "CenterY": "426.11",
+                "CenterZ": "-247.13"
+            },
+            "C122620_1_hole_2": {
+                "CenterX": "26.529",
+                "CenterY": "426.61",
+                "CenterZ": "-247.13"
+            },
+            "C122620_2_hole_1": {
+                "CenterX": "26.707",
+                "CenterY": "426.11",
+                "CenterZ": "-23.132"
+            },
+            "C122620_2_hole_2": {
+                "CenterX": "26.707",
+                "CenterY": "426.61",
+                "CenterZ": "-23.132"
+            },
+            "C122620_3_hole_1": {
+                "CenterX": "372.87",
+                "CenterY": "405.46",
+                "CenterZ": "-54.958"
+            },
+            "C122620_3_hole_2": {
+                "CenterX": "372.87",
+                "CenterY": "406.96",
+                "CenterZ": "-54.958"
+            },
+            "C122620_4_hole_1": {
+                "CenterX": "373",
+                "CenterY": "405.21",
+                "CenterZ": "-214.96"
+            },
+            "C122620_4_hole_2": {
+                "CenterX": "373",
+                "CenterY": "406.71",
+                "CenterZ": "-214.96"
+            }
+        }
+    }
+}

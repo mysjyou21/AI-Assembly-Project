@@ -146,6 +146,7 @@ class DetectionModel():
                 probs[cls_name].append(np.max(P_cls[0, ii, :]))
 
         components_dict = {}
+        # confidences_dict = {}
 
         for key in bboxes:
             bbox = np.array(bboxes[key])
@@ -160,12 +161,17 @@ class DetectionModel():
 
                 if key not in components_dict:
                     components_dict[key] = []
+                # if key not in confidences_dict:
+                #     confidences_dict[key] = []
 
-                components_dict[key].append([real_x, real_y, real_w, real_h])
+                components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[jk]])
+                # confidences_dict[key].append(new_probs[jk])
 
         for key in self.C.class_mapping.values():
             if key not in components_dict:
                 components_dict[key] = []
+            # if key not in confidences_dict:
+            #     confidences_dict[key] = []
 
         return components_dict
 

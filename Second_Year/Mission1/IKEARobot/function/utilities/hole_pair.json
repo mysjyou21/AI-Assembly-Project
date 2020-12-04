@@ -1,0 +1,25 @@
+{
+  "1": [],
+  "2": [
+    "part6_1-hole_5#part3_1-hole_0",
+    "part6_1-hole_3#part3_1-hole_4"
+  ],
+  "3": [
+    "part2_1-hole_1#part6_1-hole_2",
+    "part2_1-hole_5#part6_1-hole_0"
+  ],
+  "4": [
+    "part4_1-hole_1#part6_1-hole_6",
+    "part4_1-hole_3#part6_1-hole_7",
+    "part4_1-hole_7#part6_1-hole_9"
+  ],
+  "5": [
+    "part5_1-hole_1#part2_1-hole_2",
+    "part5_1-hole_4#part3_1-hole_3",
+    "part5_1-hole_8#part4_1-hole_4"
+  ],
+  "6": [],
+  "7": [],
+  "8": [],
+  "9": []
+}

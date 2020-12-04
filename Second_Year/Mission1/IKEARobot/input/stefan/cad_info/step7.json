@@ -1,0 +1,34 @@
+{
+    "File_name": "step7",
+    "data": {
+        "PartName": "step7.stl",
+        "SizeToAxisX": "464.67",
+        "SizeToAxisY": "900.57",
+        "SizeToAxisZ": "400",
+        "MinPointX": "0",
+        "MinPointY": "0",
+        "MinPointZ": "-353.84",
+        "hole": {
+            "C122620_1-hole_1": {
+                "CenterX": "26.529",
+                "CenterY": "426.11",
+                "CenterZ": "-247.13"
+            },
+            "C122620_2-hole_1": {
+                "CenterX": "26.707",
+                "CenterY": "426.11",
+                "CenterZ": "-23.132"
+            },
+            "C122620_3-hole_1": {
+                "CenterX": "372.87",
+                "CenterY": "405.46",
+                "CenterZ": "-54.958"
+            },
+            "C122620_4-hole_1": {
+                "CenterX": "373",
+                "CenterY": "405.21",
+                "CenterZ": "-214.96"
+            }
+        }
+    }
+}

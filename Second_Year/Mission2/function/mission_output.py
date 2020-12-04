@@ -289,10 +289,10 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
             part_dic = OrderedDict()
             part = action[i]
             if part[0]!='':
-                part_loc = part[0] # [x,y,w,h]
-                part_id = part[1] # 'string'
-                part_pose = part[2] # [theta,phi,alpha,additional]
-                part_holes = part[3]
+#                part_loc = part[0] # [x,y,w,h]
+                part_id = part[0] # 'string'
+                part_pose = part[1] # [theta,phi,alpha,additional]
+                part_holes = part[2]
                 part_dic['label'] = part_id
                 part_dic['theta'] = part_pose[0]
                 part_dic['phi'] = part_pose[1]

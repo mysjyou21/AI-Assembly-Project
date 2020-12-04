@@ -1,8 +1,0 @@
-Blender 2.82 (sub 7)
-Read prefs: /home/isaackang/.config/blender/2.82/config/userpref.blend
-Traceback (most recent call last):
-  File "/home/isaackang/D/drive/Robot/Codes/IKEARobot/./function/retrieval/render/render_views.py", line 15, in <module>
-    from pose_gt import POSE_TO_LABEL
-ModuleNotFoundError: No module named 'pose_gt'
-
-Blender quit

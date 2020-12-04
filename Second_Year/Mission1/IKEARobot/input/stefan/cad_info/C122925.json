@@ -1,0 +1,28 @@
+{
+    "File_name": "C122925",
+    "data": {
+        "PartName": "C122925.STEP",
+        "SizeToAxisX": "14.48",
+        "SizeToAxisY": "12",
+        "SizeToAxisZ": "12",
+        "CenterPointX": "7.36",
+        "CenterPointY": "0",
+        "CenterPointZ": "0",
+        "MinPointX": "0.12",
+        "MinPointY": "-6",
+        "MinPointZ": "-6",
+        "MaxPointX": "14.6",
+        "MaxPointY": "6",
+        "MaxPointZ": "6",
+        "CenterFrom_X": "4.888889",
+        "CenterFrom_Y": "0",
+        "CenterFrom_Z": "0",
+        "CenterTo_X": "14.55556",
+        "CenterTo_Y": "0",
+        "CenterTo_Z": "0",
+        "CenterAxisDir_X": "1",
+        "CenterAxisDir_Y": "0",
+        "CenterAxisDir_Z": "0",
+        "Radius": "3"
+    }
+}

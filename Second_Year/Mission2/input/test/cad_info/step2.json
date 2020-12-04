@@ -1,0 +1,110 @@
+{
+    "File_name": "step2.obj",
+    "data": {
+        "PartName": "step2.obj",
+        "SizeToAxisX": "",
+        "SizeToAxisY": "",
+        "SizeToAxisZ": "",
+        "CenterPointX": "0",
+        "CenterPointY": "0",
+        "CenterPointZ": "0",
+        "MinPointX": "",
+        "MinPointY": "",
+        "MinPointZ": "",
+        "MaxPointX": "",
+        "MaxPointY": "",
+        "MaxPointZ": "",
+        "hole": {
+            "part6_1-hole_1": {
+                "CenterX": 170.09999999999988,
+                "CenterY": 16.142062367082538,
+                "CenterZ": -1.1212000000000728
+            },
+            "part6_1-hole_10": {
+                "CenterX": 135.10000000000005,
+                "CenterY": -487.1835849924846,
+                "CenterZ": 404.1063045083596
+            },
+            "part6_1-hole_2": {
+                "CenterX": 200.09999999999988,
+                "CenterY": 0.13999999999995794,
+                "CenterZ": -1.1212000000001296
+            },
+            "part6_1-hole_3": {
+                "CenterX": 170.09999999999988,
+                "CenterY": -15.862062367082629,
+                "CenterZ": -1.1212000000000728
+            },
+            "part6_1-hole_4": {
+                "CenterX": 135.10000000000008,
+                "CenterY": 16.076845773367268,
+                "CenterZ": 366.2618950748767
+            },
+            "part6_1-hole_5": {
+                "CenterX": 165.10000000000008,
+                "CenterY": 0.07478340628473745,
+                "CenterZ": 366.2618950748767
+            },
+            "part6_1-hole_6": {
+                "CenterX": 135.10000000000008,
+                "CenterY": -15.916767815662837,
+                "CenterZ": 366.25243379441633
+            },
+            "part6_1-hole_7": {
+                "CenterX": 135.10000000000005,
+                "CenterY": -176.9265639841886,
+                "CenterZ": 382.0222510974098
+            },
+            "part6_1-hole_8": {
+                "CenterX": 135.10000000000005,
+                "CenterY": -455.303156814088,
+                "CenterZ": 401.31596417748756
+            },
+            "part6_1-hole_9": {
+                "CenterX": 165.10000000000005,
+                "CenterY": -471.24836400968525,
+                "CenterZ": 402.71087187675494
+            },
+            "part7_1-hole_1": {
+                "CenterX": -170.0,
+                "CenterY": -15.86,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_2": {
+                "CenterX": 170.0,
+                "CenterY": -15.86,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_3": {
+                "CenterX": -170.0,
+                "CenterY": 0.14000000000000057,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_4": {
+                "CenterX": 170.0,
+                "CenterY": 0.14000000000000057,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_5": {
+                "CenterX": -170.0,
+                "CenterY": 16.14,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_6": {
+                "CenterX": 170.0,
+                "CenterY": 16.14,
+                "CenterZ": -1.1212
+            },
+            "part7_1-hole_7": {
+                "CenterX": -112.0,
+                "CenterY": -23.86,
+                "CenterZ": 18.8788
+            },
+            "part7_1-hole_8": {
+                "CenterX": 112.0,
+                "CenterY": -23.86,
+                "CenterZ": 18.8788
+            }
+        }
+    }
+}

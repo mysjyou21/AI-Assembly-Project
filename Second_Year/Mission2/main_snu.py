@@ -49,7 +49,7 @@ def main():
     for step in range(start_step, IKEA.num_steps + 1):
         print('\n\n(step {})\n'.format(step))
         step_start_time = time.time()
-        IKEA.detect_step_component(step)
+        # IKEA.detect_step_component(step) ?? # 이삭 to 민우 : 이거 실수 맞나?
 
         if opt.step_num:
 
@@ -59,26 +59,11 @@ def main():
                 pickle_data = pickle.load(f)
 
             print("{} Step Information Restored".format(step-1))
-            IKEA.circles_loc = pickle_data['circles_loc']
-            IKEA.circles_separated_loc = pickle_data['circles_separated_loc']
-            IKEA.rectangles_loc = pickle_data['rectangles_loc']
-            IKEA.connectors_serial_imgs = pickle_data['connectors_serial_imgs']
-            IKEA.connectors_serial_loc = pickle_data['connectors_serial_loc']
-            IKEA.connectors_mult_imgs = pickle_data['connectors_mult_imgs']
-            IKEA.connectors_mult_loc = pickle_data['connectors_mult_loc']
-            IKEA.connectors_loc = pickle_data['connectors_loc']
-            IKEA.parts_loc = pickle_data['parts_loc']
-            IKEA.tools_loc = pickle_data['tools_loc']
-            IKEA.is_merged = pickle_data['is_merged']
-            IKEA.is_tool = pickle_data['is_tool']
-            IKEA.connectors_serial_OCR = pickle_data['connectors_serial_OCR']
-            IKEA.connectors_mult_OCR = pickle_data['connectors_mult_OCR']
-            IKEA.parts = pickle_data['parts']
-            IKEA.parts_info = pickle_data['parts_info']
-            IKEA.cad_models = pickle_data['cad_models']
-            IKEA.candidate_classes = pickle_data['candidate_classes']
-            IKEA.actions = pickle_data['actions']
-            IKEA.step_action = pickle_data['step_action']
+            IKEA.circles_loc, IKEA.circles_separated_loc, IKEA.rectangles_loc, IKEA.connectors_serial_imgs, \
+            IKEA.connectors_serial_loc, IKEA.connectors_mult_imgs, IKEA.connectors_mult_loc, IKEA.connectors_loc, \
+            IKEA.parts_loc, IKEA.tools_loc, IKEA.is_merged, IKEA.is_tool, IKEA.connectors_serial_OCR, IKEA.connectors_mult_OCR, \
+            IKEA.parts, IKEA.parts_info, IKEA.cad_models, IKEA.candidate_classes, IKEA.actions, IKEA.step_action, IKEA.unused_parts, IKEA.used_parts \
+                = pickle_data_loader(mode="download", pickle_data=pickle_data)
 
             # if opt.add_cad:
             #     print("Need to add Mid from the prior step")
@@ -114,39 +99,32 @@ def main():
                     print('list_added_stl :', list_added_stl)
                     SIGNAL = True
         if WAIT_SIGNAL:
-            IKEA.rendering(step, list_added_obj, list_added_stl)
-            IKEA.retrieve_part(step, list_added_obj, list_added_stl)
+#            IKEA.rendering(step, list_added_obj, list_added_stl)
+            IKEA.predict_pose(step)
             list_prev_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
             list_prev_obj = [os.path.basename(x) for x in list_prev_obj]
         else:
-            IKEA.retrieve_part(step)
+            IKEA.predict_pose(step)
+        if step > 2 and opt.mid_RT_on:
+            IKEA.group_RT_mid(step)
+            if opt.hole_detection_on:
+                try:
+                    IKEA.msn2_hole_detector(step)
+                except IndexError:
+                    pass
+
         IKEA.group_as_action(step)
+
         print(IKEA.actions[step])
         IKEA.write_csv_mission(step, option=0)
 
         # dictionary Info Backup per step
-        info_dict = {}
-        info_dict['circles_loc'] = IKEA.circles_loc
-        info_dict['circles_separated_loc'] = IKEA.circles_separated_loc
-        info_dict['rectangles_loc'] = IKEA.rectangles_loc
-        info_dict['connectors_serial_imgs'] = IKEA.connectors_serial_imgs #
-        info_dict['connectors_serial_loc'] = IKEA.connectors_serial_loc
-        info_dict['connectors_mult_imgs'] = IKEA.connectors_mult_imgs #
-        info_dict['connectors_mult_loc'] = IKEA.connectors_mult_loc
-        info_dict['connectors_loc'] = IKEA.connectors_loc
-        info_dict['parts_loc'] = IKEA.parts_loc
-        info_dict['tools_loc'] = IKEA.tools_loc
-        info_dict['is_merged'] = IKEA.is_merged
-        info_dict['is_tool'] = IKEA.is_tool
-        info_dict['connectors_serial_OCR'] = IKEA.connectors_serial_OCR
-        info_dict['connectors_mult_OCR'] = IKEA.connectors_mult_OCR
-        info_dict['parts'] = IKEA.parts
-        info_dict['parts_info'] = IKEA.parts_info
-        info_dict['cad_models'] = IKEA.cad_models
-        info_dict['candidate_classes'] = IKEA.candidate_classes
-        info_dict['actions'] = IKEA.actions
-        info_dict['step_action'] = IKEA.step_action
-        
+        backup_data = [IKEA.circles_loc, IKEA.circles_separated_loc, IKEA.rectangles_loc, IKEA.connectors_serial_imgs, \
+            IKEA.connectors_serial_loc, IKEA.connectors_mult_imgs, IKEA.connectors_mult_loc, IKEA.connectors_loc, \
+            IKEA.parts_loc, IKEA.tools_loc, IKEA.is_merged, IKEA.is_tool, IKEA.connectors_serial_OCR, IKEA.connectors_mult_OCR, \
+            IKEA.parts, IKEA.parts_info, IKEA.cad_models, IKEA.candidate_classes, IKEA.actions, IKEA.step_action, IKEA.unused_parts, IKEA.used_parts]
+        info_dict = pickle_data_loader(mode="upload", backup_data=backup_data)
+
         pickle_filepath = IKEA.part_dir+'/info_dict_'+str(step)+'.pickle'
         with open(pickle_filepath, 'wb') as f:
             pickle.dump(info_dict, f)
@@ -160,6 +138,60 @@ def main():
         if WAIT_SIGNAL and AUTO and step<9:
             for p in new_cad_list[step-1]:
                 os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
+
+def pickle_data_loader(mode, pickle_data=None, backup_data=None):
+    if mode == "download":
+        circles_loc = pickle_data['circles_loc']
+        circles_separated_loc = pickle_data['circles_separated_loc']
+        rectangles_loc = pickle_data['rectangles_loc']
+        connectors_serial_imgs = pickle_data['connectors_serial_imgs']
+        connectors_serial_loc = pickle_data['connectors_serial_loc']
+        connectors_mult_imgs = pickle_data['connectors_mult_imgs']
+        connectors_mult_loc = pickle_data['connectors_mult_loc']
+        connectors_loc = pickle_data['connectors_loc']
+        parts_loc = pickle_data['parts_loc']
+        tools_loc = pickle_data['tools_loc']
+        is_merged = pickle_data['is_merged']
+        is_tool = pickle_data['is_tool']
+        connectors_serial_OCR = pickle_data['connectors_serial_OCR']
+        connectors_mult_OCR = pickle_data['connectors_mult_OCR']
+        parts = pickle_data['parts']
+        parts_info = pickle_data['parts_info']
+        cad_models = pickle_data['cad_models']
+        candidate_classes = pickle_data['candidate_classes']
+        actions = pickle_data['actions']
+        step_action = pickle_data['step_action']
+        unused_parts = pickle_data['unused_parts']
+        used_parts = pickle_data['used_parts']
+        return circles_loc, circles_separated_loc, rectangles_loc, connectors_serial_imgs, connectors_serial_loc,\
+            connectors_mult_imgs, connectors_mult_loc, connectors_loc, parts_loc, tools_loc, is_merged, is_tool,\
+            connectors_serial_OCR, connectors_mult_OCR, parts, parts_info, cad_models, candidate_classes, actions, step_action, unused_parts, used_parts
+
+    if mode == "upload":
+        info_dict = {}
+        info_dict['circles_loc'] = backup_data[0]
+        info_dict['circles_separated_loc'] = backup_data[1]
+        info_dict['rectangles_loc'] = backup_data[2]
+        info_dict['connectors_serial_imgs'] = backup_data[3]
+        info_dict['connectors_serial_loc'] = backup_data[4]
+        info_dict['connectors_mult_imgs'] = backup_data[5]
+        info_dict['connectors_mult_loc'] = backup_data[6]
+        info_dict['connectors_loc'] = backup_data[7]
+        info_dict['parts_loc'] = backup_data[8]
+        info_dict['tools_loc'] = backup_data[9]
+        info_dict['is_merged'] = backup_data[10]
+        info_dict['is_tool'] = backup_data[11]
+        info_dict['connectors_serial_OCR'] = backup_data[12]
+        info_dict['connectors_mult_OCR'] = backup_data[13]
+        info_dict['parts'] = backup_data[14]
+        info_dict['parts_info'] = backup_data[15]
+        info_dict['cad_models'] = backup_data[16]
+        info_dict['candidate_classes'] = backup_data[17]
+        info_dict['actions'] = backup_data[18]
+        info_dict['step_action'] = backup_data[19]
+        info_dict['unused_parts'] = backup_data[20]
+        info_dict['used_parts'] = backup_data[21]
+        return info_dict
 
 if __name__ == '__main__':
     main()
