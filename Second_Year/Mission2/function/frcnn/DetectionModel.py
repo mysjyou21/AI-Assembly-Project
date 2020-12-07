@@ -118,8 +118,7 @@ class DetectionModel():
             for ii in range(P_cls.shape[1]):
                 cls_name = self.C.class_mapping[np.argmax(P_cls[0, ii, :])]
                 ###########################
-                if cls_name in ['1', '2', '3', '4', '5', '6']:
-                    bbox_threshold = 0.94
+                # bbox_threshold = 0.94
                 ###########################
                 if np.max(P_cls[0, ii, :]) < bbox_threshold or np.argmax(P_cls[0, ii, :]) == (P_cls.shape[2] - 1):
                     continue

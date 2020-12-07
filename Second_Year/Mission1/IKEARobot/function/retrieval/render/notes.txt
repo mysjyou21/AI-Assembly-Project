@@ -1,3 +1,0 @@
-<stefan_parts>
-chair_part3가 chair_part2보다 짧다
-chair_part5 left when chair viewed front

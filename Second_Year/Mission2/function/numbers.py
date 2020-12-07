@@ -673,7 +673,8 @@ def mult_detect(self, step_num):
                         image_list.append(padded)
                         mult_images_dict[mult_num_order].append(padded)
                         mult_num_order += 1
-                    x, y, w, h = stats[index, :4]
+                    # x, y, w, h = stats[index, :4]
+                    x, y, w, h = x_min, y_min, x_max-x_min, y_max-y_min
                     step_mult_loc.append([int(x), int(y), int(w), int(h)])
                 except:
                     pass

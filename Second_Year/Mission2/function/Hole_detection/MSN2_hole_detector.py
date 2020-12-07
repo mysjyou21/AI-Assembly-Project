@@ -117,7 +117,7 @@ class MSN2_hole_detector():
             new_parts_info_list = list()
             new_part_used_hole = list()
             connectivity = ''
-            new_parts_info = [x for x in sorted(step_parts_info) if x[0] not in mid_id_list]
+            new_parts_info = [x for x in sorted(step_parts_info, key=lambda x:x[0]) if x[0] not in mid_id_list]
             if len(new_parts_info)!=0:
                 for new_part_info in new_parts_info:
                     new_part_id = new_part_info[0]

@@ -8,7 +8,7 @@ import pickle
 from socket import *
 from sys import exit
 from data_file import SocketInfo, bcolors
-from function.Grouping_mid.hole_loader import mid_hole_loader
+from function.Grouping_mid.hole_loader import mid_loader
 
 from config import *
 opt = init_args()
@@ -278,7 +278,7 @@ def cadinfo_check(step, IKEA):
     message = ''
     for cadinfo_name in cadinfo_files:
         if int(cadinfo_name.split('_')[0].replace('step','')) == step-1: #just previous step
-            mid_hole_XYZ = mid_hole_loader(cadinfo_name)
+            mid_hole_XYZ = mid_loader(cadinfo_name)
             temp_check=1
             mid_id_list = [int(x.replace('part','')) for x in mid_hole_XYZ.keys()]
             check_cadinfo_mid = [x for x in mid_id_list if x in IKEA.unused_parts[step]]

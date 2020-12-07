@@ -15,7 +15,7 @@ from function.bubbles import *
 from function.numbers import *
 from function.mission_output import *
 from function.OCRs_new import *
-from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
+from function.Pose.evaluation.initial_pose_estimation_2 import InitialPoseEstimation
 from function.hole import *
 from function.Grouping_mid.hole_loader import base_loader, mid_loader
 from function.Grouping_mid.grouping_RT import transform_hole, baseRT_to_midRT
@@ -82,6 +82,7 @@ class Assembly():
         # Retrieval variables
         self.part_H = self.part_W = 224
         self.parts = {}  # detected part images {step_num  : list of part images}
+        self.parts_bboxed = {}  # detected part images shown as bbox on whole image {step_num  : list of part images}
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
         self.cad_models = {}  # names of cad models of retrieval results
         self.candidate_classes = []  # candidate cad models for retrieval (not used)
@@ -252,19 +253,18 @@ class Assembly():
             img_name = os.path.join(self.opt.part_image_path, '%02d.png' % step_num)
             cv.imwrite(img_name, step_part_img)
 
-
-
-        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        # 이삭 to 준형 : 이미지 cropping 하는 부분 detection 함수 내에 있는게 맞는 것 같아서 pose 함수에서 여기로 옮김
-        # 아래쪽 것은 detection 결과를 저장하는건데, 누가 만들었었는지 기억 안남. 필요 없으면 지우셈.
-
         # crop part images from step images with detection results
         step_part_images = []
+        step_part_images_bboxed = []
         for i, crop_region in enumerate(self.parts_loc[step_num]):
             x, y, w, h = crop_region[:4]
             step_part_image = self.steps[step_num][y:y + h, x:x + w]
             step_part_images.append(step_part_image)
+            step_part_image_bboxed = self.steps[step_num].copy()
+            step_part_image_bboxed = cv2.rectangle(step_part_image_bboxed, (x, y), (x + w, y + h), color=(0, 0, 255), thickness=2)
+            step_part_images_bboxed.append(step_part_image_bboxed)
         self.parts[step_num] = step_part_images
+        self.parts_bboxed[step_num] = step_part_images_bboxed
 
         # save detection result images
         if self.opt.save_detection:
@@ -273,7 +273,6 @@ class Assembly():
             for i in range(len(self.parts[step_num])):
                 cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
                             self.parts[step_num][i])
-        #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # update self.used_parts[step_num] / self.unused_parts[step_num + 1]
         self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
@@ -297,10 +296,13 @@ class Assembly():
         connectors = components_dict1['Elements']
         tools = components_dict1['Tool']
         # parts = components_dict2['Mid'] + components_dict2['New']
-        parts = components_dict2['1'] + components_dict2['2'] + components_dict2['3'] + \
-                components_dict2['4'] + components_dict2['5'] + components_dict2['6']
+        part_ids = sorted(list(components_dict2.keys()))
+        part_ids.remove('bg')
+        parts = []
+        for key in part_ids:
+            parts += components_dict2[key]
         parts_info = []
-        for part_id in ['1', '2', '3', '4', '5', '6']:
+        for part_id in part_ids:
             parts_info += ['part%s' % part_id] * len(components_dict2[part_id])
 
         return connectors, tools, circles, rectangles, parts, parts_info
@@ -552,12 +554,12 @@ class Assembly():
 
             else: # material은 1개 인데 part가 여러개인 상황 -> 즉 모든 부품을 하나의 action으로 연결.
                 action_group_step = []
-                temp_action_group_step = [[''], [''], [''], [''], material, circle_mult, ['']]
+                temp_action_group_step = [[''], [''], [''], [''], serials, circle_num, circle_action]
                 for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
                     parts_info = self.parts_info[step_num][p_ind]
 #                    parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
                     temp_action_group_step[p_ind] = parts_info
-                    action_group_step += [temp_action_group_step]
+                action_group_step += [temp_action_group_step]
                 self.actions[step_num] = action_group_step
 
 

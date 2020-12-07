@@ -282,21 +282,21 @@ class InitialPoseEstimation():
 
     def save_part_id_pose(self, args, step_num, matched_poses):
         cad_models = args.cad_models[step_num]
-        part_imgs = args.parts[step_num]
+        part_imgs = args.parts_bboxed[step_num]
         for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
+            plt.imsave(args.opt.part_id_pose_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img)
             plt.clf()
-            fig, ax = plt.subplots(1, 2, sharey=True)
-            ax[0].imshow(self.resize_and_pad(part_img))
-            ax[0].set_title('detection result')
+            plt.figure(figsize=(4, 4))
+            plt.axis('off')
             pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
-            ax[1].imshow(pose_img)
-            ax[1].set_title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
+            plt.imshow(pose_img)
+            plt.title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
             if not os.path.exists(args.opt.part_id_pose_path):
                 os.makedirs(args.opt.part_id_pose_path)
-            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i + 1))
+            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}_pose'.format(step_num, i))
             plt.close()
 
-
+    '''
     def resize_and_pad(self, img, a=150):
         # find object region
         non_zero = np.nonzero(255 - img)
@@ -316,3 +316,4 @@ class InitialPoseEstimation():
         pad_bottom = int(np.floor((224 - img.shape[0]) / 2))
         img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, None, [255, 255, 255])
         return img
+    '''
