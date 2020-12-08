@@ -15,7 +15,7 @@ from function.bubbles import *
 from function.numbers import *
 from function.mission_output import *
 from function.OCRs_new import *
-from function.Pose.evaluation.initial_pose_estimation_2 import InitialPoseEstimation
+from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
 from function.hole import *
 from function.Grouping_mid.hole_loader import base_loader, mid_loader
 from function.Grouping_mid.grouping_RT import transform_hole, baseRT_to_midRT
@@ -25,6 +25,7 @@ from pathlib import Path
 import json
 import shutil
 import platform
+import copy
 
 from keras import backend as K
 
@@ -92,7 +93,7 @@ class Assembly():
         self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
         self.pose_save_dict = {} # RT of detected part images (save version) {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
         self.pose_save_dict['000000'] = {}
-        self.cad_names = [os.path.basename(x).split('.')[0] for x in sorted(glob.glob(self.opt.cad_path + '/*.obj'))] # cad names in cad_path
+        self.cad_names = ['part1', 'part2', 'part3', 'part4', 'part5', 'part6', 'part7', 'part8']
         self.K = np.array([
             3444.4443359375,0.0,874.0,
             0.0,3444.4443359375,1240.0,
@@ -102,7 +103,7 @@ class Assembly():
 
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
-        self.step_action = []
+        self.step_action = {}
 
         self.data_loader()
 
@@ -296,6 +297,19 @@ class Assembly():
         connectors = components_dict1['Elements']
         tools = components_dict1['Tool']
         # parts = components_dict2['Mid'] + components_dict2['New']
+
+        #########################################################################
+        # # 준형
+        # # stefan 에서 step_num=2일 때, part6과 part8 검출 결과 바꾸기
+        # # 모델 제대로 학습 후 원래대로 변경해야함
+        if self.opt.assembly_name.lower() == 'stefan' and step_num == 2:
+            import copy
+            temp = copy.deepcopy(components_dict2['6'])
+            components_dict2['6'] = components_dict2['8']
+            components_dict2['8'] = temp
+
+        #########################################################################
+
         part_ids = sorted(list(components_dict2.keys()))
         part_ids.remove('bg')
         parts = []
@@ -393,17 +407,16 @@ class Assembly():
         step_tools = self.tools_loc[step_num]
         step_connectors_serial_OCR = self.connectors_serial_OCR[step_num]
         step_connectors_mult_OCR = self.connectors_mult_OCR[step_num]
+        step_parts = self.parts_loc[step_num]
+        parts_info = self.parts_info[step_num]
 
         # DIVIDE step-components into several groups, regarding connector_mult-connector_serial pairs!
-        step_circles_new, step_connectors_new, step_connectors_serial_new, step_connectors_mult_new, step_tools_new, \
-        step_connectors_serial_OCR_new, step_connectors_mult_OCR_new, is_merged = grouping(step_circles,
-                                                                                           step_rectangles,
-                                                                                           step_connectors,
-                                                                                           step_connectors_serial,
-                                                                                           step_connectors_mult,
-                                                                                           step_tools,
-                                                                                           step_connectors_serial_OCR,
-                                                                                           step_connectors_mult_OCR)
+        step_circles_new, step_connectors_new, step_connectors_serial_new, step_connectors_mult_new, \
+        step_tools_new, step_connectors_serial_OCR_new, step_connectors_mult_OCR_new, \
+        step_parts_new, parts_info_new, is_merged = \
+            grouping(step_circles, step_rectangles, step_connectors, step_connectors_serial,
+                     step_connectors_mult, step_tools, step_connectors_serial_OCR,
+                     step_connectors_mult_OCR, step_parts, parts_info)
 
         # update variables
         self.circles_loc[step_num] = step_circles_new
@@ -414,6 +427,8 @@ class Assembly():
         self.tools_loc[step_num] = step_tools_new
         self.connectors_serial_OCR[step_num] = step_connectors_serial_OCR_new
         self.connectors_mult_OCR[step_num] = step_connectors_mult_OCR_new
+        self.parts_loc[step_num] = step_parts_new
+        self.parts_info[step_num] = parts_info_new
         self.is_merged[step_num] = is_merged
 
     def OCR(self, step_num):  # 준형
@@ -432,13 +447,13 @@ class Assembly():
 
         connector_serial_OCR = []
         connector_mult_OCR = []
-        true_serials = [['100001'], ['101350'], ['122620'], ['104322'], ['122925']]
+        true_serials = [['101350'], ['122620'], ['104322'], ['122925']]
 
         for serials in serials_list:
             serial_OCR = self.OCR_model.run_OCR_serial(args=self, imgs=serials)
 
-            if (serial_OCR not in true_serials) and (serial_OCR != ''):
-                count = [0, 0, 0, 0, 0]
+            if (serial_OCR not in true_serials) and (serial_OCR != '') and (serial_OCR != '100001'):
+                count = [0, 0, 0, 0]
                 for idx, key in enumerate(true_serials):
                     for i in range(6):
                         if serial_OCR[i] == key[0][i]: count[idx] = count[idx] + 1
@@ -490,9 +505,8 @@ class Assembly():
             os.mkdir(self.part_dir)
 
         # detection classification results
-        # retrieved_classes = self.parts_info[step_num]
         self.cad_models[step_num] = self.parts_info[step_num].copy()
-        assert len(self.parts[step_num]) == len(self.cad_models[step_num]), 'length of retrieval input/output don\'t match'
+        assert len(self.parts[step_num]) == len(self.cad_models[step_num]), "length of retrieval input/output doesn't match"
         print('')
         print('classified classes : ', self.cad_models[step_num]) #blue
 
@@ -500,9 +514,7 @@ class Assembly():
         # update self.pose_return_dict, self.cad_models
         self.pose_model.test(self, step_num)
 
-
-        ########################################################################################
-        # 이삭 to 민우 : 이거 옮겨 간다고 하지 않았나...
+        # individual parts pose visualization
         def closest_gt_RT_index(RT_pred):
             return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
 
@@ -511,24 +523,17 @@ class Assembly():
             self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
         print('modified classified classes : ', self.cad_models[step_num]) #blue
-        classified_classes = self.cad_models[step_num]
-        # parts_info update
         print('matched_poses', matched_poses) #blue
-        # update self.parts_info[step_num]
-        holes = [[] for x in range(len(matched_poses))]
-        connectivity = ''
-        self.parts_info[step_num] = list(zip(classified_classes, matched_poses, holes))  #-> 앞으로
-        self.parts_info[step_num] = [list(x) for x in self.parts_info[step_num]]
-        self.parts_info[step_num].append(connectivity)
-        print(self.parts_info[step_num])
-        ##########################################################################################
 
-    def group_as_action(self, step_num):   # action 관련 정보들을 묶어서 self.actions에 넣고 ./output에 json write
+    def group_as_action(self, step_num):  # action 관련 정보들을 묶어서 self.actions에 넣고 ./output에 json write
         """ Group components in action-unit
         [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
         Update self.actions """
 
         material = self.connectors_serial_OCR[step_num]
+        if (len(material) != 0) and ('100001' in material[0]):
+            key = material[0].index('100001')
+            material.pop(key)
         circle_mult = self.connectors_mult_OCR[step_num]
 
         f = open(os.path.join('function', 'utilities', 'action_label.csv'), 'r')  # , encoding='utf-8')
@@ -539,56 +544,297 @@ class Assembly():
             part_lab = line[0]
             act_dic[part_lab] = line[1:]
         f.close()
+
+        ########## 0. prepare for write mission / change pose_id ##########
+
+        with open('./function/utilities/label_to_pose.json', 'r') as f:
+            pose_dic = json.load(f)
+
+        if step_num == 1:
+            if os.path.exists(self.opt.csv_dir):
+                shutil.rmtree(self.opt.csv_dir)
+
+        filename = self.opt.cut_path.split('/')[-2]
+        if not os.path.exists(self.opt.csv_dir):
+            os.makedirs(self.opt.csv_dir)
+
+        ######## 1. mapping action first #######
+        if self.is_merged[step_num] == True:  # (원 두개 붙어서 나오는 경우  ex - stefan step9) 따로 해결
+            # serial이 한개면 step9와 같은 상황이라고 판정.
+            # 그외 케이스 일 경우 action을 뱉지 X
+            connectors, tools, circles, rectangles, parts, _ = self.component_detector(step_num)
+            self.step_action['number_of_circle'] = len(circles)
+            self.step_action['serials'] = self.connectors_serial_OCR[step_num]
+            self.step_action['mult'] = self.connectors_mult_OCR[step_num]
+            self.step_action['action'] = ['']
+            if len(material) == 1 and ['122925'] in material: self.step_action['action'] = ['A003', 'A004']
+
+        else:
+            if len(material) == 1 and material != [[]]:
+                serials, circle_action, circle_num = map_action(self, material[0], circle_mult[0], act_dic, step_num)
+                self.step_action['serials'] = serials
+                self.step_action['mult'] = circle_num
+                self.step_action['action'] = circle_action
+            elif (material == []) and (len(self.parts_info[step_num]) - 1) == 1:  # 원이 안나오고 part 1개면 -> A005
+                self.step_action['serials'] = ['']
+                self.step_action['mult'] = ['1']
+                self.step_action['action'] = ['A006']
+            elif material == [[], []]:  # 원이 두갠데 serial이 하나도 안나오는 경우
+                self.step_action['serials'] = ['']
+                self.step_action['mult'] = ['1']
+                self.step_action['action'] = ['A005']
+            else:  # error : 한 원에 material 2개
+                print('Exception case in action mapping')
+                self.step_action['serials'] = ['']
+                self.step_action['mult'] = ['1']
+                self.step_action['action'] = ['']
+
+        self.step_action['parts#'] = len(self.parts_info[step_num]) - 1
         connectivity = self.parts_info[step_num][-1]
 
-        if len(material) == 1 and material != [[]]:
-            serials, circle_action, circle_num = map_action(self, material[0], circle_mult[0], act_dic, step_num)
-            if connectivity == '': # material은 1개 인데 connectivity가 X -> step1 같은 상황
-                action_group_step = []
-                for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
-                    parts_info = self.parts_info[step_num][p_ind]
-#                    parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
-                    temp_action_group_step = [parts_info, [''], [''], [''], serials, circle_num, circle_action]
-                    action_group_step += [temp_action_group_step]
-                self.actions[step_num] = action_group_step
+        ########### 2. write mission json ########
+        f = open(os.path.join(self.opt.csv_dir, 'mission_%s.json' % str(step_num)), 'w')
 
-            else: # material은 1개 인데 part가 여러개인 상황 -> 즉 모든 부품을 하나의 action으로 연결.
-                action_group_step = []
-                temp_action_group_step = [[''], [''], [''], [''], serials, circle_num, circle_action]
-                for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
-                    parts_info = self.parts_info[step_num][p_ind]
-#                    parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
-                    temp_action_group_step[p_ind] = parts_info
-                action_group_step += [temp_action_group_step]
-                self.actions[step_num] = action_group_step
+        step_dic = OrderedDict()
+        step_dic['File_name'] = filename
+        step_dic['Label_step_number'] = str(step_num)
 
+        ######## 1. mapping action ##############
+        if self.is_merged[step_num] == True:  ## exception_case
+            for act_i in range(len(self.step_action['action'])):
+                mults = []  ##exception
+                action_dic = OrderedDict()
+                for i in range(0, 4):
+                    part_dic = OrderedDict()
+                    if i < self.step_action['parts#']:
+                        part = copy.deepcopy(self.parts_info[step_num][i])
+                        mults.append([str(len(part[2]))])
+                    else:
+                        part = ['', '', '']
+                    if part[0] != '':
+                        part_id = part[0]  # 'string'
+                        if part_id == 'part7': part_id = 'step1_a'
+                        if part_id == 'part8': part_id = 'step1_b'
+                        part_pose_ind = part[1]
+                        part_pose_lab = pose_dic[str(part_pose_ind)]
+                        part[1] = part_pose_lab.split('_')
+                        part_pose = part[1]  # [theta,phi,alpha,additional]
+                        part_holes = part[2]
+                        part_dic['label'] = part_id
+                        part_dic['theta'] = part_pose[0]
+                        part_dic['phi'] = part_pose[1]
+                        part_dic['alpha'] = part_pose[2]
+                        part_dic['additional'] = part_pose[3]
+                        part_dic['#'] = '1'  # default 1
 
-        else:  # 1. error 거나(material이 여러개) 2. circle이 두개 라서 len==2인데 action은 1개 !
-            action_group_step = []
-            for p_ind in range(max(0, len(self.parts_info[step_num])-1)):
-                parts_info = self.parts_info[step_num][p_ind]
-#                parts_info = [self.parts_loc[step_num][p_ind]] + [x for x in self.parts_info[step_num][p_ind]]
-                temp_action_group_step = [parts_info, [''], [''], [''], material, circle_mult, ['']]
-                action_group_step += [temp_action_group_step]
-            self.actions[step_num] = action_group_step
+                        if 'part' in part_id:
+                            part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
+                        part_holes = sorted(part_holes)
+                        part_dic['hole'] = part_holes
+                    action_dic['Part%d' % i] = part_dic
+                action_lab_dic = OrderedDict()
+                action_lab_dic['label'] = self.step_action['action'][act_i]
+
+                if len(mults) == 0:
+                    mults = ['1']
+                action_lab_dic['#'] = mults[0][0]
+                action_dic['Action'] = action_lab_dic
+
+                connector_dic = OrderedDict()
+                serials = self.step_action['serials']
+                if len(serials) == 0:
+                    serials = ['']
+                elif len(serials[0]) == 0:
+                    mults[0] = '1'
+                connector_dic['label'] = 'C' + serials[0][0] if len(serials[0]) > 0 else serials[0]
+                connector_dic['#'] = mults[0][0]
+                action_dic['Connector'] = connector_dic
+                action_dic['HolePair'] = []
+
+                step_dic['Action%d' % act_i] = action_dic
+            if len(self.step_action['action']) == 0: step_dic['Action0'] = return_empty_dict
+
+            pass
+        ###### 여기 위까진 완성 !! #########
+        ######### 이제 이 밑에 일반적인 case들 시작 #######
+
+        elif self.step_action['serials'] != [''] and len(self.step_action['serials']) == 1:
+            # serial이 허수는 아니며 정상적으로 들어옴 ! ( general case )
+            if connectivity == '':  # serial은 1개 인데 connectivity가 X -> step1 같은 상황
+                for act_i in range(len(self.parts_info[step_num]) - 1):
+                    action_dic = OrderedDict()
+                    for i in range(0, 4):
+                        part_dic = OrderedDict()
+                        if i == 0:
+                            part = copy.deepcopy(self.parts_info[step_num][act_i])
+                        else:
+                            part = ['', '', '']
+                        if part[0] != '':
+                            part_id = part[0]  # 'string'
+                            part_pose_ind = part[1]
+                            part_pose_lab = pose_dic[str(part_pose_ind)]
+                            part[1] = part_pose_lab.split('_')
+                            part_pose = part[1]  # [theta,phi,alpha,additional]
+                            part_holes = part[2]
+                            part_dic['label'] = part_id
+                            part_dic['theta'] = part_pose[0]
+                            part_dic['phi'] = part_pose[1]
+                            part_dic['alpha'] = part_pose[2]
+                            part_dic['additional'] = part_pose[3]
+                            part_dic['#'] = '1'  # default 1
+
+                            if 'part' in part_id:
+                                part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
+                            part_holes = sorted(part_holes)
+                            part_dic['hole'] = part_holes
+                        action_dic['Part%d' % i] = part_dic
+                    action_lab_dic = OrderedDict()
+                    action_lab_dic['label'] = circle_action[0]
+                    mults = circle_num
+                    if len(mults) == 0:
+                        mults = ['1']
+                    action_lab_dic['#'] = mults[0]
+                    action_dic['Action'] = action_lab_dic
+
+                    connector_dic = OrderedDict()
+                    if len(serials) == 0:
+                        serials = ['']
+                    elif len(serials[0]) == 0:
+                        mults[0] = '1'
+                    connector_dic['label'] = 'C' + serials[0] if len(serials[0]) > 0 else serials[0]
+                    connector_dic['#'] = mults[0]
+                    action_dic['Connector'] = connector_dic
+                    action_dic['HolePair'] = []
+
+                    step_dic['Action%d' % act_i] = action_dic
+
+            else:  # serial은 1개 인데 connectivity != '' -> 무언가로 연결해야함 (1:1 or 1:many 연결)
+                print('1:1 or 1:many')
+                connectivity = connectivity.split('#')
+                if len(connectivity) == 2:  # 1:1 connecivity
+                    action_dic = OrderedDict()
+
+                    for i in range(0, 4):
+                        part_dic = OrderedDict()
+                        if i < self.step_action['parts#']:
+                            part = copy.deepcopy(self.parts_info[step_num][i])
+                        else:
+                            part = ['', '', '']
+                        if part[0] != '':
+                            part_id = part[0]  # 'string'
+                            if part_id == 'part7': part_id = 'step1_a'
+                            if part_id == 'part8': part_id = 'step1_b'
+                            part_pose_ind = part[1]
+                            part_pose_lab = pose_dic[str(part_pose_ind)]
+                            part[1] = part_pose_lab.split('_')
+                            part_pose = part[1]  # [theta,phi,alpha,additional]
+                            part_holes = part[2]
+                            part_dic['label'] = part_id
+                            part_dic['theta'] = part_pose[0]
+                            part_dic['phi'] = part_pose[1]
+                            part_dic['alpha'] = part_pose[2]
+                            part_dic['additional'] = part_pose[3]
+                            part_dic['#'] = '1'  # default 1
+
+                            if 'part' in part_id:
+                                part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
+                            part_holes = sorted(part_holes)
+                            part_dic['hole'] = part_holes
+                        action_dic['Part%d' % i] = part_dic
+                    action_lab_dic = OrderedDict()
+                    action_lab_dic['label'] = self.step_action['action'][0]
+
+                    mults = copy.deepcopy(self.step_action['mult'])
+                    if len(mults) == 0:
+                        mults = ['1']
+                    action_lab_dic['#'] = mults[0]
+                    action_dic['Action'] = action_lab_dic
+
+                    connector_dic = OrderedDict()
+                    serials = copy.deepcopy(self.step_action['serials'])
+                    if len(serials) == 0:
+                        serials = ['']
+                    elif len(serials[0]) == 0:
+                        mults[0] = '1'
+                    connector_dic['label'] = 'C' + serials[0] if len(serials[0]) > 0 else serials[0]
+                    connector_dic['#'] = mults[0]
+                    action_dic['Connector'] = connector_dic
+                    action_dic['HolePair'] = []
+
+                    step_dic['Action%d' % 0] = action_dic
+
+        elif self.step_action['action'] in [['A005'], ['A006']]:
+            action_dic = OrderedDict()
+            for i in range(0, 4):
+                part_dic = OrderedDict()
+                if i < self.step_action['parts#']:
+                    part = copy.deepcopy(self.parts_info[step_num][i])
+                else:
+                    part = ['', '', '']
+                if part[0] != '':
+                    part_id = part[0]  # 'string'
+                    if part_id == 'part7': part_id = 'step1_a'
+                    if part_id == 'part8': part_id = 'step1_b'
+                    part_pose_ind = part[1]
+                    part_pose_lab = pose_dic[str(part_pose_ind)]
+                    part[1] = part_pose_lab.split('_')
+                    part_pose = part[1]  # [theta,phi,alpha,additional]
+                    part_holes = part[2]
+                    part_dic['label'] = part_id
+                    part_dic['theta'] = part_pose[0]
+                    part_dic['phi'] = part_pose[1]
+                    part_dic['alpha'] = part_pose[2]
+                    part_dic['additional'] = part_pose[3]
+                    part_dic['#'] = '1'  # default 1
+
+                    if 'part' in part_id:
+                        part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
+                    part_holes = sorted(part_holes)
+                    part_dic['hole'] = part_holes
+                action_dic['Part%d' % i] = part_dic
+            action_lab_dic = OrderedDict()
+            action_lab_dic['label'] = self.step_action['action'][0]
+
+            mults = copy.deepcopy(self.step_action['mult'])
+            if len(mults) == 0:
+                mults = ['1']
+            action_lab_dic['#'] = mults[0]
+            action_dic['Action'] = action_lab_dic
+
+            connector_dic = OrderedDict()
+            serials = copy.deepcopy(self.step_action['serials'])
+            connector_dic['label'] = ''
+            connector_dic['#'] = '1'
+            action_dic['Connector'] = connector_dic
+            action_dic['HolePair'] = []
+
+            step_dic['Action%d' % 0] = action_dic
+
+        else:
+            print('Error2 in action mapping')
+        json.dump(step_dic, f, indent=2)
+
+        f.close()
+        self.actions[step_num] = self.step_action
 
     def group_RT_mid(self, step_num):
         ######### detection에서 검출된 기본부품의 pose 반영 hole 위치 #######
         base_RT_list = self.pose_return_dict[step_num]
-        base_id_list = [base_part[0] for base_part in self.parts_info[step_num][:-1]]
+        # base_id_list = [base_part[0] for base_part in self.parts_info[step_num][:-1]]
+        base_id_list = self.parts_info[step_num]
 
         if (len(base_id_list) < 2):
             pass  ######## 설명서내에 검출된 기본 part가 2개 미만인 경우 #########
 
         base_hole_dict = {}
         for i, id in enumerate(base_id_list):
-            base_hole_XYZ = base_loader(id, self.opt.hole_path)
+            base_hole_XYZ = base_loader(id, self.opt.hole_path, self.opt.cad_path)
             base_RT = base_RT_list[i]
             base_hole_dict[id] = transform_hole(base_RT, base_hole_XYZ)
 
 
         ######## 중간산출물 hole 위치 loading  ##########
-        mid_hole_dict = mid_loader('step%i'%(step_num-1), self.opt.hole_path)
+        mid_hole_dict = mid_loader('step%i'%(step_num-1), self.opt.hole_path, self.opt.cad_path)
 
         mid_RT, mid_id_list, find_mid = baseRT_to_midRT(base_hole_dict, mid_hole_dict)
 

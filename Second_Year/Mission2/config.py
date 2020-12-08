@@ -28,12 +28,14 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_mult_black', default=False)
     parser.add_argument('--save_group_image', default=True)
     parser.add_argument('--save_part_image', default=True)
-    parser.add_argument('--save_pose_prediction_maps', default=False)
+    parser.add_argument('--save_pose_prediction_maps', default=True)
     parser.add_argument('--save_part_id_pose', default=True)
     parser.add_argument('--gpu', default='0')
     parser.add_argument('--print_time', default=False)
     parser.add_argument('--mid_RT_on', default=True)
     parser.add_argument('--hole_detection_on', default=True)
+
+    parser.add_argument('--blender', default='blender')
 
     parser.add_argument('--step_num', default=False, type=int)
 

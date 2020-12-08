@@ -186,6 +186,8 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
                 part_id = part[0] # 'string'
                 part_pose = part[1] # [theta,phi,alpha,additional]
                 part_holes = part[2]
+                if part_id == 'part7': part_id = 'step1_a'
+                if part_id == 'part8' : part_id = 'step1_b'
                 part_dic['label'] = part_id
                 part_dic['theta'] = part_pose[0]
                 part_dic['phi'] = part_pose[1]

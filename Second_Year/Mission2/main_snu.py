@@ -46,6 +46,8 @@ def main():
         minute = int((toc - tic) // 60)
         return minute, sec
 
+    save_cad_center(initial=True)
+
     for step in range(start_step, IKEA.num_steps + 1):
         print('\n\n(step {})\n'.format(step))
         step_start_time = time.time()
@@ -105,6 +107,8 @@ def main():
             list_prev_obj = [os.path.basename(x) for x in list_prev_obj]
         else:
             IKEA.predict_pose(step)
+
+        
         if step > 2 and opt.mid_RT_on:
             IKEA.group_RT_mid(step)
             if opt.hole_detection_on:
@@ -115,8 +119,8 @@ def main():
 
         IKEA.group_as_action(step)
 
-        print(IKEA.actions[step])
-        IKEA.write_csv_mission(step, option=0)
+        print(IKEA.step_action)
+        # IKEA.write_csv_mission(step, option=0)
 
         # dictionary Info Backup per step
         backup_data = [IKEA.circles_loc, IKEA.circles_separated_loc, IKEA.rectangles_loc, IKEA.connectors_serial_imgs, \
@@ -138,6 +142,8 @@ def main():
         if WAIT_SIGNAL and AUTO and step<9:
             for p in new_cad_list[step-1]:
                 os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
+        
+
 
 def pickle_data_loader(mode, pickle_data=None, backup_data=None):
     if mode == "download":
@@ -192,6 +198,14 @@ def pickle_data_loader(mode, pickle_data=None, backup_data=None):
         info_dict['unused_parts'] = backup_data[20]
         info_dict['used_parts'] = backup_data[21]
         return info_dict
+
+def save_cad_center(initial=True):
+    mute = True
+    flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial)
+    if mute:
+        os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py > ./function/utilities/stdout.txt -- ' + flag + ' 2>&1')
+    else:
+        os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py -- ' + flag)
 
 if __name__ == '__main__':
     main()

@@ -76,6 +76,8 @@ def main():
                 cadinfo_files = [os.path.basename(x).replace('.json','') for x in cadinfo_files]
                 check_cadinfo = [x for x in range(1,7) if 'part%d'%(x) in cadinfo_files]
 
+                save_cad_center(initial=True)
+
                 if len(check_cad)==6 and len(check_cadinfo)==6:
                     print(bcolors.CBLUE2+"Check all 6 base parts cad and cad info files are in right location"+bcolors.CEND)
                     csock.send(("msg_success").encode())
@@ -125,7 +127,7 @@ def main():
 
                 print(bcolors.CBLUE2+'\n\n(step {}) CAD Rendering\n'.format(step)+bcolors.CEND)
                 # Rendering
-                SIGNAL = True
+                SIGNAL = False
                 while not SIGNAL:
                     print('Waiting Signal ...', end='\r')
                     list_update_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
@@ -143,6 +145,9 @@ def main():
                         list_prev_stl = list_update_stl.copy()
                         print('list_added_stl :', list_added_stl)
                         SIGNAL = True
+
+                if step > 1:
+                    save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
 
                 if step > 1:
                     message = cadinfo_check(step, IKEA)
@@ -175,7 +180,6 @@ def main():
 
                 IKEA.group_as_action(step)
                 print(IKEA.actions[step])
-                IKEA.write_csv_mission(step, option=0)
 
                 # dictionary Info Backup per step
                 backup_data = [IKEA.circles_loc, IKEA.circles_separated_loc, IKEA.rectangles_loc, IKEA.connectors_serial_imgs, \
@@ -278,7 +282,7 @@ def cadinfo_check(step, IKEA):
     message = ''
     for cadinfo_name in cadinfo_files:
         if int(cadinfo_name.split('_')[0].replace('step','')) == step-1: #just previous step
-            mid_hole_XYZ = mid_loader(cadinfo_name)
+            mid_hole_XYZ = mid_loader(cadinfo_name, opt.hole_path, opt.cad_path)
             temp_check=1
             mid_id_list = [int(x.replace('part','')) for x in mid_hole_XYZ.keys()]
             check_cadinfo_mid = [x for x in mid_id_list if x in IKEA.unused_parts[step]]
@@ -297,6 +301,18 @@ def cadinfo_check(step, IKEA):
         print(bcolors.CYELLOW2+"failed to find cadinfo in step %d"%(step)+bcolors.CEND)
 
     return message
+
+def save_cad_center(initial=True, cad_adrs=['']):
+    mute = True
+    if cad_adrs != ['']:
+        cad_adrs_flag = (',').join(cad_adrs)
+        flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial) + ' -cad_adrs ' + cad_adrs_flag
+    else:
+        flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial)
+    if mute:
+        os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py > ./function/utilities/stdout.txt -- ' + flag + ' 2>&1')
+    else:
+        os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py -- ' + flag)
 
 if __name__ == '__main__':
     main()

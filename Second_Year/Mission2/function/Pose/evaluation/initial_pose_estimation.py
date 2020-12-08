@@ -4,6 +4,8 @@ import cv2
 import pickle
 import json
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 import torch
@@ -31,8 +33,8 @@ class Color():
             4 : (0, 128, 0),
             5 : (255, 0, 0),
             6 : (130, 0, 75),
-            7 : (255, 255, 0),
-            8 : (255, 0, 255),
+            7 : (255, 0, 255),
+            8 : (255, 255, 0),
         }
     def __call__(self, x):
         return self.colors[x]
@@ -47,13 +49,13 @@ class InitialPoseEstimation():
 
         with args.graph_pose.as_default():
             sess = args.sess_pose
-            self.model = CorrespondenceBlockModel(3, 7, 256) # in channels, id channels, uvw channels
+            self.model = CorrespondenceBlockModel(3, 9, 256) # in channels, id channels, uvw channels
             print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
             checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             self.model.cuda(0)
-        with open(self.pose_data_path + '/uvw_xyz_correspondences.pkl', 'rb') as f:
+        with open(self.pose_data_path + '/uvw_xyz_correspondences_new.pkl', 'rb') as f:
             self.correspondence_dicts = pickle.load(f)
 
         refresh_folder(args.opt.initial_pose_estimation_image_path)
@@ -80,9 +82,10 @@ class InitialPoseEstimation():
             image_tensor = image_tensor.cuda(0)
 
             # feed forward
-            idmask_pred, umask_pred, vmask_pred, wmask_pred = self.model(image_tensor)
+            idmask_pred, edgemask_pred, umask_pred, vmask_pred, wmask_pred = self.model(image_tensor)
 
             idmask_pred = torch.argmax(idmask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
+            edgemask_pred = torch.argmax(edgemask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
             umask_pred = torch.argmax(umask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
             vmask_pred = torch.argmax(vmask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
             wmask_pred = torch.argmax(wmask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
@@ -94,6 +97,7 @@ class InitialPoseEstimation():
                     ID_color[h, w, :] = color(idmask_pred[h, w])
 
             ID = idmask_pred.astype(np.uint8)
+            EDGE = (255 * edgemask_pred).astype(np.uint8)
             U = umask_pred.astype(np.uint8)
             V = vmask_pred.astype(np.uint8)
             W = wmask_pred.astype(np.uint8)
@@ -103,17 +107,67 @@ class InitialPoseEstimation():
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 cv2.imwrite(save_path + '/STEP{}_ID.png'.format(step_num), ID_color)
+                cv2.imwrite(save_path + '/STEP{}_EDGE.png'.format(step_num), EDGE)
                 cv2.imwrite(save_path + '/STEP{}_U.png'.format(step_num), U)
                 cv2.imwrite(save_path + '/STEP{}_V.png'.format(step_num), V)
                 cv2.imwrite(save_path + '/STEP{}_W.png'.format(step_num), W)
                 cv2.imwrite(save_path + '/STEP{}_UVW.png'.format(step_num), UVW)
 
-            # post-process ID-map with detection results
+            # post-process ID-map with detection classes (part2, part3, part7, part8)
+            parts_loc = args.parts_loc[step_num]
+            cad_models = args.cad_models[step_num]
+            
+            detected_models = list({'part2', 'part3', 'part7', 'part8'} & set(cad_models))
+            undetected_models = list({'part2', 'part3', 'part7', 'part8'} - set(cad_models))
+            for undetected_model in undetected_models:
+                if undetected_model == 'part2':
+                    # 2 -> 7 -> 3 -> 8
+                    if 'part7' in detected_models:
+                        ID = np.where(ID == 2, 7, ID)
+                    elif 'part3' in detected_models:
+                        ID = np.where(ID == 2, 3, ID)
+                    elif 'part8' in detected_models:
+                        ID = np.where(ID == 2, 8, ID) 
+                if undetected_model == 'part3':
+                    # 3 -> 8 -> 2 -> 7
+                    if 'part8' in detected_models:
+                        ID = np.where(ID == 3, 8, ID)
+                    elif 'part2' in detected_models:
+                        ID = np.where(ID == 3, 2, ID)
+                    elif 'part7' in detected_models:
+                        ID = np.where(ID == 3, 7, ID)
+                if undetected_model == 'part7':
+                    # 7 -> 2 -> 8 -> 3
+                    if 'part2' in detected_models:
+                        ID = np.where(ID == 7, 2, ID)
+                    elif 'part8' in detected_models:
+                        ID = np.where(ID == 7, 8, ID)
+                    elif 'part3' in detected_models:
+                        ID = np.where(ID == 7, 3, ID)
+                if undetected_model == 'part8':
+                    # 8 -> 3 -> 7 -> 2
+                    if 'part3' in detected_models:
+                        ID = np.where(ID == 8, 3, ID)
+                    elif 'part7' in detected_models:
+                        ID = np.where(ID == 8, 7, ID)
+                    elif 'part2' in detected_models:
+                        ID = np.where(ID == 8, 2, ID)
+
+            ID_color = np.zeros((_H, _W, 3)).astype(np.uint8)
+            for h in range(_H):
+                for w in range(_W):
+                    ID_color[h, w, :] = color(ID[h, w])
+
+            if args.opt.save_pose_prediction_maps:
+                cv2.imwrite(save_path + '/STEP{}_ID_1.png'.format(step_num), ID_color)
+            
+            # post-process ID-map with detection bbox
             parts_loc = args.parts_loc[step_num]
             cad_models = args.cad_models[step_num]
             ID_new = np.zeros(ID.shape).astype(np.int)
             for bbox, model in zip(parts_loc, cad_models):
                 obj_id = args.cad_names.index(model) + 1
+                
                 mask_id = (255 * (ID == obj_id)).astype(np.uint8)
                 ID_id = (obj_id * (ID == obj_id)).astype(np.uint8)
                 x, y, w, h = bbox[0:4]
@@ -132,7 +186,7 @@ class InitialPoseEstimation():
                 for w in range(_W):
                     ID_new_color[h, w, :] = color(ID_new[h, w])
             if args.opt.save_pose_prediction_maps:
-                cv2.imwrite(save_path + '/STEP{}_ID_new.png'.format(step_num), ID_new_color)
+                cv2.imwrite(save_path + '/STEP{}_ID_2.png'.format(step_num), ID_new_color)
 
             # if no New part is found, infer from pose segmentation map
             max_pixels = 0
@@ -206,7 +260,7 @@ class InitialPoseEstimation():
                     ID_new_modified = ID_new_modified.astype(np.uint8)
                     ID_new_modified_color = ID_new_color + ID_part_to_add_color
                     if args.opt.save_pose_prediction_maps:
-                        cv2.imwrite(save_path + '/STEP{}_ID_new_modified.png'.format(step_num), ID_new_modified_color)
+                        cv2.imwrite(save_path + '/STEP{}_ID_3.png'.format(step_num), ID_new_modified_color)
                     print('Added "New" at step {} : part{} (part0 means none added)'.format(step_num, max_pixels_look_up_part_id)) #blue
                     # print('pixel counts : {}'.format(max_pixels)) #blue
 
@@ -279,7 +333,7 @@ class InitialPoseEstimation():
         else:
             return np.eye(3), np.array([0, 0, 25]).reshape(3, 1)
 
-
+    
     def save_part_id_pose(self, args, step_num, matched_poses):
         cad_models = args.cad_models[step_num]
         part_imgs = args.parts_bboxed[step_num]
@@ -295,8 +349,26 @@ class InitialPoseEstimation():
                 os.makedirs(args.opt.part_id_pose_path)
             plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}_pose'.format(step_num, i))
             plt.close()
-
     '''
+
+    def save_part_id_pose(self, args, step_num, matched_poses):
+        cad_models = args.cad_models[step_num]
+        part_imgs = args.parts[step_num]
+        for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
+            plt.clf()
+            fig, ax = plt.subplots(1, 2, sharey=True)
+            part_img = self.resize_and_pad(part_img)
+            ax[0].imshow(part_img)
+            ax[0].set_title('detection result')
+            pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
+            ax[1].imshow(pose_img)
+            ax[1].set_title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
+            if not os.path.exists(args.opt.part_id_pose_path):
+                os.makedirs(args.opt.part_id_pose_path)
+            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i))
+            plt.close()
+
+    
     def resize_and_pad(self, img, a=150):
         # find object region
         non_zero = np.nonzero(255 - img)
@@ -317,3 +389,4 @@ class InitialPoseEstimation():
         img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, None, [255, 255, 255])
         return img
     '''
+    

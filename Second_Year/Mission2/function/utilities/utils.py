@@ -259,7 +259,7 @@ def set_steps_from_cut(I, current_step_num=1):
     return step_nums, is_steps, step_imgs
 
 
-def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult, tools, serials_OCR, mults_OCR):
+def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult, tools, serials_OCR, mults_OCR, step_parts, parts_info):
     """
     [ [[element1_1], [element1_2]], [[element2_1]], [] ] 이런 식으로 grouping 수행.
     ---------------------------
@@ -281,6 +281,8 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
     tools_list = tools.copy()
     serials_OCR_list = serials_OCR.copy()
     mults_OCR_list = mults_OCR.copy()
+    step_parts_list = step_parts.copy()
+    parts_info_list = parts_info.copy()
     ### 1. rectangle 영역 안의 것들은 제거
 
 
@@ -292,7 +294,7 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
 
     for rectangle in rectangles_list:
         x_rec, y_rec, w_rec, h_rec = rectangle[:4]
-        for obj_list in [circles_list, connectors_list, connectors_serial_list, connectors_mult_list, tools_list]:
+        for obj_list in [circles_list, connectors_list, connectors_serial_list, connectors_mult_list, tools_list, step_parts_list]:
             for idx, obj in enumerate(obj_list):
                 x_obj, y_obj, w_obj, h_obj = obj[:4]
                 # obj의 왼쪽 위 좌표랑 오른쪽 아래 좌표가 모두 rectangle 내부에 존재하면 remove
@@ -304,6 +306,9 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
                         serials_OCR_list.remove(obj_list[idx])
                     if obj_list == connectors_mult_list:
                         mults_OCR_list.remove(obj_list[idx])
+                    # obj_list가 step_parts_list인 경우, 해당 parts_info도 처리
+                    if obj_list == step_parts_list:
+                        parts_info_list.remove(parts_info_list[idx])
                     # print('removed')
 
     ### 2. 인접한 circle들끼리 grouping
@@ -462,7 +467,8 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
         if len(serials_OCR_list) != 0 and len(mults_OCR_list_new[n]) == 0:
             mults_OCR_list_new[n] = ['1']
 
-    return circles_new, connectors_list_new, connectors_serial_list_new, connectors_mult_list_new, tools_list_new, serials_OCR_list_new, mults_OCR_list_new, is_merged
+    return circles_new, connectors_list_new, connectors_serial_list_new, connectors_mult_list_new, tools_list_new, \
+           serials_OCR_list_new, mults_OCR_list_new, step_parts_list, parts_info_list, is_merged
 
 
 def div_cut(I):
