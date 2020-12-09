@@ -88,9 +88,7 @@ def base_loader(part_name, json_path, center_dir, scale=100):
     holes = part_dic["hole"]
     holename = [x for x in sorted(holes.keys())]
     if part_name == 'step1_a' or part_name == 'step1_b':
-        holename1 = sorted([x for x in holename if 'C122620' in x])
-        holename2 = sorted([x for x in holename if 'C122620' not in x], key=lambda x: int(x.split('-')[1].split('_')[1]))
-        holename = holename2 + holename1
+        holename = sorted(holename)
     else:
         holename = sorted(holename, key=lambda x:int(x.split('_')[1]))
     hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
@@ -103,7 +101,7 @@ def base_loader(part_name, json_path, center_dir, scale=100):
 #        center_XYZ = [part_dic["CenterPointX"], part_dic["CenterPointY"], part_dic["CenterPointZ"]]
 #    else:
 #        center_XYZ = [0,0,0]
-    if "MinPointX" in part_dic.keys():
+    if "MinPointX" in part_dic.keys() and 'step' not in part_name:
         min_XYZ = [part_dic["MinPointX"], part_dic["MinPointY"], part_dic["MinPointZ"]]
     else:
         min_XYZ = [0,0,0]

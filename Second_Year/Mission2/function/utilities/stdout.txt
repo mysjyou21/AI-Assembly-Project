@@ -1,144 +1,1 @@
-Blender 2.82 (sub 7) (hash 375c7dc4caf4 built 2020-03-12 05:30:40)
-Read prefs: /home/isaackang/.config/blender/2.82/config/userpref.blend
-PuTTY X11 proxy: unable to connect to forwarded X server: Network error: Connection refused
-xcb_connection_has_error() returned true
-PuTTY X11 proxy: unable to connect to forwarded X server: Network error: Connection refused
-xcb_connection_has_error() returned true
-found bundled python: /home/isaackang/.local/share/blender-2.82a-linux64/2.82/python
-Info: Deleted 3 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-Info: Deleted 1 object(s)
-/home/isaackang/.local/share/blender-2.82a-linux64/2.82/python/bin/python3.7m
-# render views.py
-cad_adrs =  (<class 'str'>)
-cad_path = ./input/stefan/cad (<class 'str'>)
-initial = True (<class 'bool'>)
-json_path = ./input/stefan/cad (<class 'str'>)
-['./input/stefan/cad/part1.obj', './input/stefan/cad/part2.obj', './input/stefan/cad/part3.obj', './input/stefan/cad/part4.obj', './input/stefan/cad/part5.obj', './input/stefan/cad/part6.obj', './input/stefan/cad/part7.obj', './input/stefan/cad/part8.obj', './input/stefan/cad/step1_a.STL', './input/stefan/cad/step1_b.STL', './input/stefan/cad/step2.STL', './input/stefan/cad/step3.STL', './input/stefan/cad/step4.STL', './input/stefan/cad/step5.STL', './input/stefan/cad/step6.STL', './input/stefan/cad/step7.STL', './input/stefan/cad/step8.STL', './input/stefan/cad/step9_b.STL']
-Info: Deleted 3 object(s)
-loading: part1
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part1.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0012 sec |   0.0010 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0018 sec |   0.0017 sec) Done, building geometries (verts:84 faces:164 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0034 sec |   0.0033 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0034 sec |   0.0034 sec) Finished importing: './input/stefan/cad/part1.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part2
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part2.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0042 sec |   0.0041 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0044 sec |   0.0043 sec) Done, building geometries (verts:392 faces:780 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0100 sec |   0.0099 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0100 sec |   0.0100 sec) Finished importing: './input/stefan/cad/part2.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part3
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part3.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0040 sec |   0.0039 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0041 sec |   0.0040 sec) Done, building geometries (verts:392 faces:780 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0091 sec |   0.0090 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0092 sec |   0.0091 sec) Finished importing: './input/stefan/cad/part3.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part4
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part4.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0067 sec |   0.0066 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0068 sec |   0.0067 sec) Done, building geometries (verts:652 faces:1308 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0157 sec |   0.0156 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0157 sec |   0.0157 sec) Finished importing: './input/stefan/cad/part4.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part5
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part5.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0213 sec |   0.0212 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0215 sec |   0.0214 sec) Done, building geometries (verts:808 faces:1628 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0324 sec |   0.0323 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0325 sec |   0.0324 sec) Finished importing: './input/stefan/cad/part5.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part6
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part6.obj'...
-Progress:   0.00%  (  0.0002 sec |   0.0002 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0085 sec |   0.0084 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0087 sec |   0.0085 sec) Done, building geometries (verts:808 faces:1628 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0191 sec |   0.0189 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0192 sec |   0.0191 sec) Finished importing: './input/stefan/cad/part6.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part7
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part7.obj'...
-Progress:   0.00%  (  0.0002 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0197 sec |   0.0195 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0199 sec |   0.0197 sec) Done, building geometries (verts:1761 faces:3632 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0422 sec |   0.0421 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0423 sec |   0.0423 sec) Finished importing: './input/stefan/cad/part7.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: part8
-Progress:   0.00%(  0.0000 sec |   0.0000 sec) Importing OBJ './input/stefan/cad/part8.obj'...
-Progress:   0.00%  (  0.0001 sec |   0.0001 sec) Parsing OBJ file...
-Progress:   0.00%    (  0.0190 sec |   0.0188 sec) Done, loading materials and images...
-Progress:  33.33%    (  0.0192 sec |   0.0190 sec) Done, building geometries (verts:1768 faces:3632 materials: 1 smoothgroups:1) ...
-Progress:  66.67%    (  0.0412 sec |   0.0411 sec) Done.
-Progress:  66.67%Progress: 100.00%  (  0.0413 sec |   0.0413 sec) Finished importing: './input/stefan/cad/part8.obj'
-Progress: 100.00%Progress: 100.00%
-
-Info: Deleted 1 object(s)
-loading: step1_a
-Import finished in 0.0089 sec.
-Info: Deleted 1 object(s)
-loading: step1_b
-Import finished in 0.0215 sec.
-Info: Deleted 1 object(s)
-loading: step2
-Import finished in 0.0180 sec.
-Info: Deleted 1 object(s)
-loading: step3
-Import finished in 0.0307 sec.
-Info: Deleted 1 object(s)
-loading: step4
-Import finished in 0.0552 sec.
-Info: Deleted 1 object(s)
-loading: step5
-Import finished in 0.0510 sec.
-Info: Deleted 1 object(s)
-loading: step6
-Import finished in 0.0716 sec.
-Info: Deleted 1 object(s)
-loading: step7
-Import finished in 0.0567 sec.
-Info: Deleted 1 object(s)
-loading: step8
-Import finished in 0.0694 sec.
-Info: Deleted 1 object(s)
-loading: step9_b
-Import finished in 0.1063 sec.
-
-Blender quit
+sh: 1: blender: not found

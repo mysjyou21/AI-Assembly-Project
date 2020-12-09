@@ -100,6 +100,10 @@ def main():
                     list_prev_stl = list_update_stl.copy()
                     print('list_added_stl :', list_added_stl)
                     SIGNAL = True
+
+        if step > 1:
+            save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
+
         if WAIT_SIGNAL:
 #            IKEA.rendering(step, list_added_obj, list_added_stl)
             IKEA.predict_pose(step)
@@ -108,15 +112,13 @@ def main():
         else:
             IKEA.predict_pose(step)
 
-        
+
         if step > 2 and opt.mid_RT_on:
             IKEA.group_RT_mid(step)
             if opt.hole_detection_on:
-                try:
-                    IKEA.msn2_hole_detector(step)
-                except IndexError:
-                    pass
-
+                IKEA.msn2_hole_detector(step)
+        else:
+            IKEA.msn2_hole_detector(step)
         IKEA.group_as_action(step)
 
         print(IKEA.step_action)
@@ -142,7 +144,7 @@ def main():
         if WAIT_SIGNAL and AUTO and step<9:
             for p in new_cad_list[step-1]:
                 os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
-        
+
 
 
 def pickle_data_loader(mode, pickle_data=None, backup_data=None):
@@ -199,9 +201,13 @@ def pickle_data_loader(mode, pickle_data=None, backup_data=None):
         info_dict['used_parts'] = backup_data[21]
         return info_dict
 
-def save_cad_center(initial=True):
+def save_cad_center(initial=True, cad_adrs=['']):
     mute = True
-    flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial)
+    if cad_adrs != ['']:
+        cad_adrs_flag = (',').join(cad_adrs)
+        flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial) + ' -cad_adrs ' + cad_adrs_flag
+    else:
+        flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial)
     if mute:
         os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py > ./function/utilities/stdout.txt -- ' + flag + ' 2>&1')
     else:

@@ -127,7 +127,7 @@ def main():
 
                 print(bcolors.CBLUE2+'\n\n(step {}) CAD Rendering\n'.format(step)+bcolors.CEND)
                 # Rendering
-                SIGNAL = False
+                SIGNAL = True
                 while not SIGNAL:
                     print('Waiting Signal ...', end='\r')
                     list_update_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))

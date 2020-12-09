@@ -49,6 +49,7 @@ def init_args(description='Robot'):
 
     opt.assembly_path = os.path.join(opt.input_path, opt.assembly_name)
     opt.hole_path = os.path.join(opt.assembly_path, 'cad_info')
+    opt.hole_path_2 = os.path.join(opt.assembly_path, 'cad_info2')
     opt.cut_path = os.path.join(opt.input_path, opt.assembly_name, 'cuts')
     opt.cad_path = os.path.join(opt.input_path, opt.assembly_name, 'cad')
     opt.point_cloud_path = os.path.join(opt.cad_path, 'point_cloud')

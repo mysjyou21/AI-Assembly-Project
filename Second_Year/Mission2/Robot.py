@@ -296,20 +296,6 @@ class Assembly():
             rectangles = components_dict1['Guidance_Square']
         connectors = components_dict1['Elements']
         tools = components_dict1['Tool']
-        # parts = components_dict2['Mid'] + components_dict2['New']
-
-        #########################################################################
-        # # 준형
-        # # stefan 에서 step_num=2일 때, part6과 part8 검출 결과 바꾸기
-        # # 모델 제대로 학습 후 원래대로 변경해야함
-        if self.opt.assembly_name.lower() == 'stefan' and step_num == 2:
-            import copy
-            temp = copy.deepcopy(components_dict2['6'])
-            components_dict2['6'] = components_dict2['8']
-            components_dict2['8'] = temp
-
-        #########################################################################
-
         part_ids = sorted(list(components_dict2.keys()))
         part_ids.remove('bg')
         parts = []
@@ -575,7 +561,7 @@ class Assembly():
                 self.step_action['serials'] = serials
                 self.step_action['mult'] = circle_num
                 self.step_action['action'] = circle_action
-            elif (material == []) and (len(self.parts_info[step_num]) - 1) == 1:  # 원이 안나오고 part 1개면 -> A005
+            elif (material == [[]]) and (len(self.parts_info[step_num]) - 1) == 1:  # 원이 안나오고 part 1개면 -> A005
                 self.step_action['serials'] = ['']
                 self.step_action['mult'] = ['1']
                 self.step_action['action'] = ['A006']
@@ -627,10 +613,8 @@ class Assembly():
                         part_dic['additional'] = part_pose[3]
                         part_dic['#'] = '1'  # default 1
 
-                        if 'part' in part_id:
-                            part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
-                        part_holes = sorted(part_holes)
-                        part_dic['hole'] = part_holes
+                        part_holes = part[-1]
+                        part_dic['hole'] = part[-1]
                     action_dic['Part%d' % i] = part_dic
                 action_lab_dic = OrderedDict()
                 action_lab_dic['label'] = self.step_action['action'][act_i]
@@ -649,7 +633,7 @@ class Assembly():
                 connector_dic['label'] = 'C' + serials[0][0] if len(serials[0]) > 0 else serials[0]
                 connector_dic['#'] = mults[0][0]
                 action_dic['Connector'] = connector_dic
-                action_dic['HolePair'] = []
+                action_dic['HolePair'] = self.hole_pairs[step_num]
 
                 step_dic['Action%d' % act_i] = action_dic
             if len(self.step_action['action']) == 0: step_dic['Action0'] = return_empty_dict
@@ -667,6 +651,8 @@ class Assembly():
                         part_dic = OrderedDict()
                         if i == 0:
                             part = copy.deepcopy(self.parts_info[step_num][act_i])
+                            if self.step_action['parts#']!=1: mults = [str(len(part[2]))]
+                            else: mults = self.step_action['mult']
                         else:
                             part = ['', '', '']
                         if part[0] != '':
@@ -683,14 +669,10 @@ class Assembly():
                             part_dic['additional'] = part_pose[3]
                             part_dic['#'] = '1'  # default 1
 
-                            if 'part' in part_id:
-                                part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
-                            part_holes = sorted(part_holes)
-                            part_dic['hole'] = part_holes
+                            part_dic['hole'] = part[-1]
                         action_dic['Part%d' % i] = part_dic
                     action_lab_dic = OrderedDict()
                     action_lab_dic['label'] = circle_action[0]
-                    mults = circle_num
                     if len(mults) == 0:
                         mults = ['1']
                     action_lab_dic['#'] = mults[0]
@@ -704,12 +686,11 @@ class Assembly():
                     connector_dic['label'] = 'C' + serials[0] if len(serials[0]) > 0 else serials[0]
                     connector_dic['#'] = mults[0]
                     action_dic['Connector'] = connector_dic
-                    action_dic['HolePair'] = []
+                    action_dic['HolePair'] = self.hole_pairs[step_num]
 
                     step_dic['Action%d' % act_i] = action_dic
 
             else:  # serial은 1개 인데 connectivity != '' -> 무언가로 연결해야함 (1:1 or 1:many 연결)
-                print('1:1 or 1:many')
                 connectivity = connectivity.split('#')
                 if len(connectivity) == 2:  # 1:1 connecivity
                     action_dic = OrderedDict()
@@ -736,10 +717,7 @@ class Assembly():
                             part_dic['additional'] = part_pose[3]
                             part_dic['#'] = '1'  # default 1
 
-                            if 'part' in part_id:
-                                part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
-                            part_holes = sorted(part_holes)
-                            part_dic['hole'] = part_holes
+                            part_dic['hole'] = part[-1]
                         action_dic['Part%d' % i] = part_dic
                     action_lab_dic = OrderedDict()
                     action_lab_dic['label'] = self.step_action['action'][0]
@@ -759,7 +737,7 @@ class Assembly():
                     connector_dic['label'] = 'C' + serials[0] if len(serials[0]) > 0 else serials[0]
                     connector_dic['#'] = mults[0]
                     action_dic['Connector'] = connector_dic
-                    action_dic['HolePair'] = []
+                    action_dic['HolePair'] = self.hole_pairs[step_num]
 
                     step_dic['Action%d' % 0] = action_dic
 
@@ -787,10 +765,7 @@ class Assembly():
                     part_dic['additional'] = part_pose[3]
                     part_dic['#'] = '1'  # default 1
 
-                    if 'part' in part_id:
-                        part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
-                    part_holes = sorted(part_holes)
-                    part_dic['hole'] = part_holes
+                    part_dic['hole'] = part[-1]
                 action_dic['Part%d' % i] = part_dic
             action_lab_dic = OrderedDict()
             action_lab_dic['label'] = self.step_action['action'][0]
@@ -806,12 +781,10 @@ class Assembly():
             connector_dic['label'] = ''
             connector_dic['#'] = '1'
             action_dic['Connector'] = connector_dic
-            action_dic['HolePair'] = []
+            action_dic['HolePair'] = self.hole_pairs[step_num]
 
             step_dic['Action%d' % 0] = action_dic
 
-        else:
-            print('Error2 in action mapping')
         json.dump(step_dic, f, indent=2)
 
         f.close()
@@ -887,23 +860,90 @@ class Assembly():
             write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)
 
     def msn2_hole_detector(self, step_num):
+        ##### General Variables #####
+        step_images = self.steps
+        connectors = self.connectors_serial_OCR
+        mults = self.connectors_mult_OCR
 
-        if self.find_mid:
-            step_images = self.steps
-            parts_info = self.parts_info
-            connectors = self.connectors_serial_OCR
-            mults = self.connectors_mult_OCR
+        if len(connectors[step_num]) != 0:
+            if len(connectors[step_num][0]) != 0:
+                pass
+            else:
+                connectors[step_num] = [[]]
+        else:
+            connectors[step_num] = [[]]
+
+        if len(mults[step_num]) != 0:
+            if len(mults[step_num][0]) != 0:
+                pass
+            else:
+                mults[step_num] = [[]]
+        else:
+            mults[step_num] = [[]]
+        
+
+        ##### Eliminate from fastener candidate #####
+        component_list = list()
+        circles_loc = self.circles_loc[step_num]
+        rectangles_loc = self.rectangles_loc[step_num]
+        connectors_loc = self.connectors_loc[step_num]
+        tools_loc = self.tools_loc[step_num]
+        if len(circles_loc)!=0:
+            for circle in circles_loc:
+                component_list.append(circle)
+
+        if len(rectangles_loc)!=0:
+            for rectangle in rectangles_loc:
+                component_list.append(rectangle)
+
+        if len(connectors_loc)!=0: ##### Need to make consistent format #####
+            if len(connectors_loc[0])!=0:
+                for connector in connectors_loc[0]:
+                    component_list.append(connector)
+
+        if len(tools_loc)!=0:
+            if len(tools_loc[0])!=0:
+                for tool in tools_loc[0]:
+                    component_list.append(tool)
+
+        ##### Main Code #####
+        if step_num > 2:
+            find_mid = self.find_mid
             K = self.K
             mid_RT = self.mid_RT
             mid_id_list = self.mid_id_list
             RTs_dict = self.RTs
+
+            parts_info = self.parts_info
             hole_pairs = self.hole_pairs
-            component_list = []
 
             parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list)
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid)
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs
         else:
-            pass
+            find_mid = False
+            K = self.K
+            mid_id_list = list()
+            mid_RT = np.zeros([3,4])
+            RTs_dict = self.RTs
+
+            new_id_list = self.parts_info[step_num]
+            new_pose_list = self.pose_return_dict[step_num]
+            assert len(new_id_list) == len(new_pose_list)
+            
+            parts_info_list = list()
+            for i in range(len(new_id_list)):
+                part_info = (new_id_list[i], new_pose_list[i])
+                parts_info_list.append(part_info)
+            self.parts_info[step_num] = parts_info_list.copy()
+            parts_info = self.parts_info
+            hole_pairs = self.hole_pairs
+
+            parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid)
+
+            self.parts_info = parts_info
+            self.hole_pairs = hole_pairs
+
