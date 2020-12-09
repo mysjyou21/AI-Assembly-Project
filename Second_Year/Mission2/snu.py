@@ -173,10 +173,9 @@ def main():
                 if step > 2 and opt.mid_RT_on:
                     IKEA.group_RT_mid(step)
                     if opt.hole_detection_on:
-                        try:
-                            IKEA.msn2_hole_detector(step)
-                        except IndexError:
-                            pass
+                        IKEA.msn2_hole_detector(step)
+                else:
+                    IKEA.msn2_hole_detector(step)
 
                 IKEA.group_as_action(step)
                 print(IKEA.actions[step])
