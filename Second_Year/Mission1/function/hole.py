@@ -609,7 +609,7 @@ def convert_view_assembly_to_CAD(id_assembly, parts_id, parts_pose, parts_loc, c
     for pid in range(len(parts_id)):
         pa_id = parts_id[pid]
         id_CAD_part = id_CAD[pid]
-        temp = ['%s_1-hole_%s'%(pa_id, x[0]) for x in id_CAD_part] if 'part' in pa_id else [x[0] for x in id_CAD_part]
+        temp = ['%s_1-%s'%(pa_id, x[0]) for x in id_CAD_part] if 'part' in pa_id else [x[0] for x in id_CAD_part]
         candidate_holes.extend(temp)
 
     for hole_step in hole_pair_step:

@@ -28,11 +28,11 @@ if pose_key:
     pose_dic[42] = pose_dic[43] = ['front', 'back'] #180,0,90
     pose_dic[44] = pose_dic[45] = ['left', 'right'] #180,0,180
     pose_dic[46] = pose_dic[47] = ['back', 'front'] #180,0,270
-    
+
     #with open('./hole_pose.json', 'w') as f:
     #   json.dump(pose_dic, f, indent=2)
-    
-    
+
+
     # pre-defined pose - related information
     pose_dic = {} # key: pose_id, value: [view_id(-up), view_id(-down)]
     pose_dic[0] = pose_dic[1] = ['left', 'right'] #0,0,0
@@ -59,7 +59,7 @@ if pose_key:
     pose_dic[42] = pose_dic[43] = ['front', 'back'] #180,0,90
     pose_dic[44] = pose_dic[45] = ['left', 'right'] #180,0,180
     pose_dic[46] = pose_dic[47] = ['back', 'front'] #180,0,270
-    
+
     #with open('./hole_pose_part.json', 'w') as f:
     #   json.dump(pose_dic, f, indent=2)
 
@@ -93,7 +93,7 @@ if loc_key:
     loc_dic[46] = loc_dic[47] = ['F','L','F','R'] #180,0,270
     #with open('./hole_loc_part.json', 'w') as f:
     #   json.dump(loc_dic, f, indent=2)
-    
+
     loc_dic = {}
     # 'B', 'F', 'R', 'L' ['up-up', 'up-left', 'down-up', 'down-left']
     loc_dic[0] = loc_dic[1] = ['B','R','B','L'] #0,0,0
@@ -149,8 +149,8 @@ stefan_part['part6'] = {'hole_1': 'bottom', 'hole_2': 'top', 'hole_3': 'bottom',
 stefan_inter = {}
 #stefan_inter['step1_a'] = {'part2_1-hole_1': ['left', '101350'], 'part2_1-hole_2': ['right', '101350'], 'part2_1-hole_3': ['left', '104322'], 'part2_1-hole_4': ['right', '104322'], 'part2_1-hole_5': ['left', '101350'], 'part2_1-hole_6': ['right', '101350'], 'C122620_1-hole_1': ['back', '122620'], 'C122620_2-hole_1': ['back', '122620']}
 #stefan_inter['step1_b'] = {'part3_1-hole_1': ['left', '101350'], 'part3_1-hole_2': ['right', '101350'], 'part3_1-hole_3': ['left', '104322'], 'part3_1-hole_4': ['right', '104322'], 'part3_1-hole_5': ['left', '101350'], 'part3_1-hole_6': ['right', '101350'], 'C122620_1-hole_1': ['back', '122620'], 'C122620_2-hole_1': ['back', '122620']}
-stefan_inter['step1_a'] = {'part2_1-hole_1': 'left', 'part2_1-hole_2': 'right', 'part2_1-hole_3': 'left', 'part2_1-hole_4': 'right', 'part2_1-hole_5': 'left', 'part2_1-hole_6': 'right', 'C122620_1-hole_1': 'back', 'C122620_1-hole_2': 'back'}
-stefan_inter['step1_b'] = {'part3_1-hole_1': 'left', 'part3_1-hole_2': 'right', 'part3_1-hole_3': 'left', 'part3_1-hole_4': 'right', 'part3_1-hole_5': 'left', 'part3_1-hole_6': 'right', 'C122620_3-hole_1': 'back', 'C122620_4-hole_1': 'back'}
+stefan_inter['step1_a'] = {'part3_1-hole_1': 'left', 'part3_1-hole_2': 'right', 'part3_1-hole_3': 'left', 'part3_1-hole_4': 'right', 'part3_1-hole_5': 'left', 'part3_1-hole_6': 'right', 'C122620_1-hole_1': 'back', 'C122620_2-hole_1': 'back'}
+stefan_inter['step1_b'] = {'part2_1-hole_1': 'left', 'part2_1-hole_2': 'right', 'part2_1-hole_3': 'left', 'part2_1-hole_4': 'right', 'part2_1-hole_5': 'left', 'part2_1-hole_6': 'right', 'C122620_3-hole_1': 'back', 'C122620_1-hole_4': 'back'}
 stefan_inter['step2'] = {'part3_1-hole_4': 'bottom', 'part6_1-hole_1': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_3': 'bottom', 'part6_1-hole_5': 'top', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'bottom', 'part6_1-hole_9': 'top', 'part6_1-hole_10': 'bottom', 'C122620_3-hole_1': 'front', 'C122620_4-hole_1': 'front'}
 stefan_inter['step3'] = {'part2_1-hole_2': 'bottom', 'part3_1-hole_4': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_5': 'top', 'part6_1-hole_7': 'bottom', 'part6_1-hole_8': 'bottom', 'part6_1-hole_9': 'top', 'part6_1-hole_10': 'bottom', 'C122620_1-hole_1': 'front', 'C122620_2-hole_1': 'front', 'C122620_3-hole_1': 'front', 'C122620_4-hole_1': 'front'}
 stefan_inter['step4'] = {'part2_1-hole_3': 'bottom', 'part3_1-hole_4': 'bottom', 'part4_1-hole_5': 'bottom', 'part6_1-hole_2': 'top', 'part6_1-hole_5': 'top', 'part6_1-hole_9': 'top', 'C122620_1-hole_1': 'front', 'C122620_2-hole_1': 'front', 'C122620_3-hole_1': 'front', 'C122620_4-hole_1': 'front'}
@@ -161,8 +161,8 @@ stefan_inter['step8'] = {'C122620_1-hole_1': 'front', 'C122620_2-hole_1': 'front
 
 # pre-defined hole-connectivity 'PART1(related to fasteners)#PART2(may not having fasteners)'
 connect = {}
-connect['step1_a#step2'] = ['left#part2_1-hole_2#bottom#part6_1-hole_3', 'left#part2_1-hole_6#bottom#part6_1-hole_1']
-connect['step1_b#part6'] = ['right#part3_1-hole_1#bottom#hole_6', 'right#part3_1-hole_5#bottom#hole_4']
+connect['step1_b#step2'] = ['left#part2_1-hole_2#bottom#part6_1-hole_3', 'left#part2_1-hole_6#bottom#part6_1-hole_1']
+connect['step1_a#part6'] = ['right#part3_1-hole_1#bottom#hole_6', 'right#part3_1-hole_5#bottom#hole_4']
 connect['part4#step3'] = ['right#hole_8#bottom#part6_1-hole_10', 'right#hole_4#bottom#part6_1-hole_8', 'right#hole_2#bottom#part6_1-hole_7']
 connect['part5#step4'] = ['bottom#hole_9#bottom#part4_1-hole_5', 'bottom#hole_2#bottom#part2_1-hole_3', 'bottom#hole_5#bottom#part3_1-hole_4']
 
@@ -242,6 +242,8 @@ def read_hole(json_dir):
 
     for path in step_paths:
         part_name = os.path.basename(path).rstrip('.json')
+        if 'step9' in part_name:
+            continue
         with open(path, 'r') as f:
             file_data = json.load(f)
         data = file_data["data"]

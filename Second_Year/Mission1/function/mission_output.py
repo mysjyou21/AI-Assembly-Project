@@ -93,113 +93,6 @@ def serial_number_to_index(num_dic_filename, OCR_serial_result, OCR_mult_result)
 
     return OCR_serial_index, OCR_mult_result_mod
 
-
-def write_csv_mission1_1st_year(OCR_serial_index, OCR_mult_result_mod, cut_path, csv_dir):
-    if not os.path.exists(csv_dir):
-        os.makedirs(csv_dir)
-    f = open(os.path.join(csv_dir, 'mission1.csv'), 'w', newline='')  # encoding='utf-8', newline='')
-    cut_names = sorted(glob.glob(os.path.join(cut_path, '*.png')))
-    csv_writer = csv.writer(f)
-    csv_writer.writerow(['file_name', 'Label', '#', 'Label', '#', 'Label', '#', 'Label', '#'])
-    for cut_num in range(len(OCR_serial_index)):
-        cut_name = cut_names[cut_num].split('/')[-1][0:-4]
-        cut_row = [cut_name]
-        cut_part_lab_ = []
-        cut_part_num_ = []
-        cut_material = OCR_serial_index[cut_num]
-        cut_mult = OCR_mult_result_mod[cut_num]
-        for circle_num in range(len(cut_material)):
-            circle_material = cut_material[circle_num]
-            circle_mult = cut_mult[circle_num]
-            for serial_num in range(len(circle_material)):
-                serial_material = circle_material[serial_num]
-                serial_mult = circle_mult[serial_num]
-                cut_part_lab_.append(serial_material)
-                cut_part_num_.append(serial_mult)
-        cut_part_pair = list(filter(lambda x: x[1] != '0', list(zip(cut_part_lab_, cut_part_num_))))
-
-        cut_part_lab = [x for x, _ in sorted(cut_part_pair)]  # zip(cut_part_lab_, cut_part_num_))]
-        cut_part_num = [x for _, x in sorted(cut_part_pair)]  # zip(cut_part_lab_, cut_part_num_))]
-
-        # for dealing with duplicates (across the circles in a cut)
-        temp_dic = OrderedDict()
-        temp_mult = OrderedDict()
-        for i in range(len(cut_part_lab)):
-            idx = cut_part_lab[i]
-            temp_dic[idx] = True
-            if idx in temp_mult:
-                temp_mult[idx] += cut_part_num[i]
-            else:
-                temp_mult[idx] = cut_part_num[i]
-        cut_part_lab = list(temp_dic.keys())  # ordered
-        cut_part_num = list(temp_mult.values())
-        cut_part = list(zip(cut_part_lab, cut_part_num))
-        cut_part = list(itertools.chain(*cut_part))
-
-        csv_writer.writerow(cut_row + cut_part)
-
-    f.close()
-    print('write mission1 file at ' + os.path.join(csv_dir, 'mission1.csv'))
-
-
-def write_csv_mission2_1st_year(OCR_serial_index, OCR_mult_result_mod, cut_path, csv_dir):
-    """ write csv file for mission2 """
-    # output folder
-    if not os.path.exists(csv_dir):
-        os.makedirs(csv_dir)
-
-    # make action dictionary
-    f = open(os.path.join('function', 'utilities', 'action_label.csv'), 'r')  # , encoding='utf-8')
-    csv_reader = csv.reader(f)
-    act_dic = {}   # key: 'PT0001' value: ['0']
-    next(csv_reader)  # ignore first line
-    for line in csv_reader:
-        part_lab = line[0]
-        act_dic[part_lab] = line[2:]
-    f.close()
-
-    # write csv file
-    f = open(os.path.join(csv_dir, 'mission2.csv'), 'w', newline='')  # encoding='utf-8', newline='')
-    cut_names = sorted(glob.glob(os.path.join(cut_path, '*.png')))
-    csv_writer = csv.writer(f)
-    csv_writer.writerow(['File_name', 'Label', '#', 'Label', '#'])
-    # for each cut
-    for cut_num in range(len(OCR_serial_index)):
-        cut_name = cut_names[cut_num].split('/')[-1][0:-4]
-        cut_row = [cut_name]
-        cut_act_lab = []
-        cut_act_num = []
-        cut_material = OCR_serial_index[cut_num]
-        cut_mult = OCR_mult_result_mod[cut_num]
-        for circle_num in range(len(cut_material)):
-            circle_material = cut_material[circle_num]
-            circle_mult = cut_mult[circle_num]
-            circle_action, circle_num = map_action(circle_material, circle_mult, act_dic)
-            cut_act_lab += circle_action
-            cut_act_num += circle_num
-
-        # process duplicates
-        temp_dic = OrderedDict()
-        temp_mult = OrderedDict()
-        for i in range(len(cut_act_lab)):
-            idx = cut_act_lab[i]
-            temp_dic[idx] = True
-            if idx in temp_mult:
-                temp_mult[idx] += cut_act_num[i]
-            else:
-                temp_mult[idx] = cut_act_num[i]
-        cut_act_lab = list(temp_dic.keys())  # ordered
-        cut_act_num = list(temp_mult.values())
-
-        cut_act = list(zip(cut_act_lab, cut_act_num))
-        cut_act = list(itertools.chain(*cut_act))
-
-        csv_writer.writerow(cut_row + cut_act)
-    f.close()
-
-    print('write mission 2 csv file in ' + os.path.join(csv_dir, 'mission2.csv'))
-
-
 def write_csv_mission(actions, cut_path, step_path, csv_dir):
     """ write contents in actions, in .csv format
         actions: [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]"""
@@ -299,15 +192,9 @@ def write_json_mission(actions, cut_path, step_path, json_dir):
                 part_dic['alpha'] = part_pose[2]
                 part_dic['additional'] = part_pose[3]
                 part_dic['#'] = '1' #default 1
-#                hole_string = ''
-#                for part_hole in part_holes:
-#                    hole_string += part_hole[0]+','
-#                hole_string = hole_string[0:-1]
-#                write_list.append(hole_string)
-#                part_holes = [x[0] for x in part_holes]
 
                 if 'part' in part_id:
-                    part_holes = ['%s_1-hole_%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
+                    part_holes = ['%s_1-%s' % (part_id, part_holes[j]) for j in range(len(part_holes))]
                 part_holes = sorted(part_holes)
                 part_dic['hole'] = part_holes
             action_dic['Part%d' % i] = part_dic

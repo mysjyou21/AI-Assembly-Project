@@ -84,7 +84,7 @@ class Assembly():
         self.cad_models = {}  # names of cad models of retrieval results
         self.candidate_classes = []  # candidate cad models for retrieval
         self.hole_pairs = {}
-        
+
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
         self.step_action = []
@@ -488,7 +488,7 @@ class Assembly():
     def retrieve_part(self, step_num, list_added_obj, list_added_stl):
         """Retrieve part identity from CAD models, part images as queries /
            Classify pose of part images.
-        
+
         Args:
             step_num: step number
 
@@ -506,7 +506,7 @@ class Assembly():
         """
         #  Retrieve part identity from CAD models, part images as queries
         # return : update self.parts_info = {step_num : (part_id(str), part_pose(index)))
-        
+
         cad_list_ = sorted(glob.glob(self.opt.cad_path + '/*'))
         cad_list = [os.path.splitext(os.path.basename(v))[0] for v in cad_list_ if os.path.splitext(v)[-1] != '']
         prev_retrieval_classes = []
@@ -555,7 +555,6 @@ class Assembly():
         holes, connectivity = self.hole_detector(step_num, retrieved_classes, matched_poses)
         self.parts_info[step_num] = list(zip(retrieved_classes, matched_poses, holes))
         self.parts_info[step_num].append(connectivity)
-        import ipdb; ipdb.set_trace(context=21) #red
 
 
     def group_as_action(self, step_num):
