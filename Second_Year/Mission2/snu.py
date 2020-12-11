@@ -1,5 +1,8 @@
 from Robot import Assembly
 import glob, os
+import fnmatch
+from os.path import exists
+import shutil
 import cv2
 import time
 import platform
@@ -13,8 +16,18 @@ from function.Grouping_mid.hole_loader import mid_loader
 from config import *
 opt = init_args()
 
-class SocketInfo(SocketInfo):
-    HOST='xx.xx.xx.xx'
+# 파일 사이즈
+def getFileSize(path, filename):
+        fileSize = os.path.getsize(os.path.join(path, filename))
+        return str(fileSize)
+
+# 송신할 파일
+def getFileData(path, filename):
+        with open(os.path.join(path, filename), 'r', encoding="UTF-8") as f:
+            data = ""
+            for line in f:
+                data += line
+        return data
 
 csock = socket(AF_INET, SOCK_STREAM)
 csock.connect(SocketInfo.ADDR1)
@@ -24,7 +37,6 @@ AUTO=False
 new_cad_list = [['step1_a.STL', 'step1_b.STL'], ['step2.STL'], ['step3.STL'], ['step4.STL'], ['step5.STL'], ['step6.STL'], ['step7.STL'], ['step8.STL']]
 
 def main():
-    step_filenames = []
     while True:
         try:
             commend = csock.recv(SocketInfo.BUFSIZE)
@@ -67,44 +79,30 @@ def main():
                 csock.send(("msg_success").encode())
                 print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
-#            elif commend.decode('utf-8') == "extract_CAD_info": # INVALID
-#                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] extract CAD info"+bcolors.CEND)
-#                # check whether part stl or part obj files in cad folder, json files
-#                cad_files = glob.glob(os.path.join(opt.cad_path, '*.obj'))
-#                cad_files += glob.glob(os.path.join(opt.cad_path, '*.STL'))
-#                cad_files = [os.path.basename(x).replace('.obj','').replace('.stl','') for x in cad_files]
-#                check_cad = [x for x in range(1,7) if 'part%d'%(x) in cad_files]
-#
-#                cadinfo_files = glob.glob(os.path.join(opt.hole_path, '*.json'))
-#                cadinfo_files = [os.path.basename(x).replace('.json','') for x in cadinfo_files]
-#                check_cadinfo = [x for x in range(1,7) if 'part%d'%(x) in cadinfo_files]
-#
-#                save_cad_center(initial=True)
-#
-#                if len(check_cad)==6 and len(check_cadinfo)==6:
-#                    print(bcolors.CBLUE2+"Check all 6 base parts cad and cad info files are in right location"+bcolors.CEND)
-#                    csock.send(("msg_success").encode())
-#                else:
-#                    csock.send(("msg_failed").encode()) ### ??
-#
-#                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
-
             elif commend.decode('utf-8') == "request_step_num":
                 print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] require step num"+bcolors.CEND)
                 message = "msg_success#"+str(IKEA.num_steps)
                 csock.send((message).encode())
                 print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
-            elif "check_cad_file" in commend.decode('utf-8'):
-                start_step_num_temp = int(commend.decode('utf-8').split('#')[-3])
-                restoration = int(commend.decode('utf-8').split('#')[-2])
-                add_cad = int(commend.decode('utf-8').split('#')[-1])
-                step = start_step_num_temp
-                if is_start:
-                    print_message = 'start step %d' % start_step_num_temp
+            elif "request_recognize_info" in commend.decode('utf-8'):
+                # kitech planner가 서울대에게 인식 정보를 요청하면서 서울대의 ./input/stefan/ 폴더에 중간산출물을 ./input/stefan/cad_info와 ./input/stefan/cad_info2에 이전 스탭에서 생성한 중간산출물 정보를 넣어줌.
+                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request recognize info"+bcolors.CEND)
+                commend_decode = commend.decode('utf-8')
+                if len(commend_decode.split('#'))==0:
+                    start_step_num_temp = 2
+                    restoration = 0
+                    add_cad = 0
+                    step = start_step_num_temp
                 else:
-                    print_message = 'step %d' % start_step_num_temp
-                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] SNU status checks-CAD_file,"+print_message+bcolors.CEND)
+                    start_step_num_temp = int(commend_decode.split('#')[-3])
+                    restoration = int(commend_decode.split('#')[-2])
+                    add_cad = int(commend_decode.split('#')[-1])
+                    step = start_step_num_temp
+                    if is_start:
+                        print_message = 'start step %d' % start_step_num_temp
+                    else:
+                        print_message = 'step %d' % start_step_num_temp
                 ########## 이전 정보 불러오기
                 if start_step_num_temp != 1 and restoration:
                     # Restore Information of prior step
@@ -128,42 +126,35 @@ def main():
                         list_prev_stl = [os.path.basename(x) for x in list_prev_stl]
                         add_cad = 0
 
-                print(bcolors.CBLUE2+'\n\n(step {}) CAD Rendering\n'.format(step)+bcolors.CEND)
-                # Rendering
-                SIGNAL = True
-                while not SIGNAL:
-                    print('Waiting Signal ...', end='\r')
-                    list_update_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
-                    list_update_obj = [os.path.basename(x) for x in list_update_obj]
-                    if len(list_prev_obj) < len(list_update_obj):
-                        list_added_obj = [x for x in list_update_obj if x not in list_prev_obj]
-                        list_prev_obj = list_update_obj.copy()
-                        print('list_added_obj :', list_added_obj)
-                        SIGNAL = True
+                print(bcolors.CBLUE2+"\n(Step %d)\n"%(step)+bcolors.CEND)
 
-                    list_update_stl = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.STL')))
-                    list_update_stl = [os.path.basename(x) for x in list_update_stl]
-                    if len(list_prev_stl) < len(list_update_stl):
-                        list_added_stl = [x for x in list_update_stl if x not in list_prev_stl]
-                        list_prev_stl = list_update_stl.copy()
-                        print('list_added_stl :', list_added_stl)
-                        SIGNAL = True
-
-                if step > 1:
-                    save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
-
-                if step > 1:
-                    message = cadinfo_check(step, IKEA)
-                    csock.send(message.encode())
+                if step == 1: # 스탭 1은 중간산출물이 없기 때문에 파일을 읽어가지 않음
+                    SIGNAL = True
                 else:
-                    csock.send(("msg_success").encode())
+                    for p in new_cad_list[step-2]:
+                        os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
+                    SIGNAL = False
+                    while not SIGNAL:
+                        print('Waiting Signal ...', end='\r')
+                        list_update_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
+                        list_update_obj = [os.path.basename(x) for x in list_update_obj]
+                        if len(list_prev_obj) < len(list_update_obj):
+                            list_added_obj = [x for x in list_update_obj if x not in list_prev_obj]
+                            list_prev_obj = list_update_obj.copy()
+                            print('list_added_obj :', list_added_obj)
+                            SIGNAL = True
+                        list_update_stl = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.STL')))
+                        list_update_stl = [os.path.basename(x) for x in list_update_stl]
+                        if len(list_prev_stl) < len(list_update_stl):
+                            list_added_stl = [x for x in list_update_stl if x not in list_prev_stl]
+                            list_prev_stl = list_update_stl.copy()
+                            print('list_added_stl :', list_added_stl)
+                            SIGNAL = True
 
-                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
+                    save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl, load_previous=True if (start_step_num_temp!=1 and is_start) else False)
+
                 is_start = 0
 
-            elif commend.decode('utf-8') == "request_recognize_info":
-                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request recognize info"+bcolors.CEND)
-                time.sleep(1)
                 csock.send(("msg_success").encode()) # receive the request
 
                 print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Process recognize"+bcolors.CEND)
@@ -212,39 +203,35 @@ def main():
                 if step > IKEA.num_steps:
                     print(bcolors.CBLUE2+'Last Step'+bcolors.CEND)
 
-                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
-
-            elif commend.decode('utf-8') == "msg_success":
-                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Check the SNU recognition is complete, Request the SNU recognition results' filenames"+bcolors.CEND)
-                # Send step's output file name
-                step_filename = 'mission_%d.json'%(step-1)  # step += 1 after recognize_info
-                step_filenames.append(step_filename)
-                step_filenames_encode = pickle.dumps(step_filenames)
-                csock.send(step_filenames_encode)
-                print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send output filenames' list"+bcolors.CEND)
-
-            elif "mission_" in commend.decode('utf-8'):
-                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request the size of SNU recognition results"+bcolors.CEND)
-                # Send step's output file size
-                step_path = os.path.join(IKEA.opt.output_dir, commend.decode('utf-8'))
-                if os.path.exists(step_path):
-                    with open(step_path, 'r') as f:
-                        step_data = json.load(f)
-                    step_data_size = len(json.dumps(step_data).encode('utf-8'))
-                    if step_data_size > SocketInfo.BUFSIZE:
-                        print(bcolors.CBOLD+"Large size Output, %s"%step_path+bcolors.CEND)
-                    csock.send((str(step_data_size)).encode())
-                    print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send the size of output %s"%(step_path)+bcolors.CEND)
-                else:
-                    csock.send("error".encode())
-                    print(bcolors.CYELLOW2+"File Not Found"+bcolors.CEND) # ...???
-
-            elif commend.decode('utf-8') == "ready":
+                # 서울대 인식 정보를 Kitech planner로 송신하는 부분
                 print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request SNU recognition results"+bcolors.CEND)
-                # Send step's output file
-                step_data_encode = json.dumps(step_data)
-                csock.send(step_data_encode.encode())
-                print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send output file %s"%(step_path)+bcolors.CEND)
+                while True:
+                    commend=csock.recv(SocketInfo.BUFSIZE)
+                    if commend.decode('utf-8')=="msg_success":
+                        break;
+
+                flist = sorted(os.listdir(IKEA.opt.output_dir)) # 서울대의 json(서울대 인식 정보) 파일 리스트를 생성함
+                msg = pickle.dumps(flist)
+                csock.send(msg) # 서울대가 json(서울대 인식 정보) 파일 리스트를 kitech planner로 송신
+
+                filename = csock.recv(SocketInfo.BUFSIZE) # Kitech planner가 json 파일 리스트를 참고하여 스탭에 해당하는 json(서울대 인식 정보) 요청
+                filename = filename.decode()
+
+                # 서울대의 아웃풋 경로에 파일이 없으면 Kitech planner로 에러 메세지를 보냄
+                if not exists(os.path.join(IKEA.opt.output_dir, filename)):
+                    msg = "error"
+                    csock.sendall(msg.encode())
+                    print(bcolors.CYELLOW2+"File Not Found%s"%(filename)+bcolors.CEND) # ...???
+                    return
+
+                csock.sendall(getFileSize(IKEA.opt.output_dir, filename).encode()) # 서울대가 Kitech planner에게 요청받은 json의 파일 크기를 알려줌
+
+                reReady = csock.recv(SocketInfo.BUFSIZE)
+                if reReady.decode('utf-8') == "ready": # 파일 크기를 확인한 Kitech planner가 파일 내용을 받을 준비가 됐다고 서울대에 알림
+                    csock.sendall(getFileData(IKEA.opt.output_dir, filename).encode()) # 서울대가 Kitech planner에게 json 파일을 보냄(파일 크기만큼)
+                    print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send output file %s "%(filename)+"of Size"+getFileSize(IKEA.opt.output_dir, filename)+bcolors.CEND)
+
+                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
             elif commend.decode('utf-8') == "program_end":
                 print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Program Finish"+bcolors.CEND)
@@ -309,40 +296,10 @@ def pickle_data_loader(mode, pickle_data=None, backup_data=None):
         info_dict['used_parts'] = backup_data[21]
         return info_dict
 
-def cadinfo_check(step, IKEA):
-    cadinfo_files = glob.glob(os.path.join(opt.hole_path, '*.json'))
-    cadinfo_files = [x for x in cadinfo_files if ('part' not in os.path.basename(x)) and ('C' not in os.path.basename(x))]
-    cadinfo_files = [os.path.basename(x).replace('.json','') for x in cadinfo_files]
-    temp_check=0
-    message = ''
-    for cadinfo_name in cadinfo_files:
-        if int(cadinfo_name.split('_')[0].replace('step','')) == step-1: #just previous step
-            mid_hole_XYZ = mid_loader(cadinfo_name, opt.hole_path, opt.cad_path)
-            temp_check=1
-            mid_id_list = [int(x.replace('part','')) for x in mid_hole_XYZ.keys()]
-            check_cadinfo_mid = [x for x in mid_id_list if x in IKEA.unused_parts[step]]
-            if 2 not in IKEA.unused_parts[step] and 7 in check_cadinfo_mid: # 2 becomes 7 after 1 step
-                check_cadinfo_mid.remove(7)
-            if 3 not in IKEA.unused_parts[step] and 8 in check_cadinfo_mid: # 3 becomes 8 after 1 step
-                check_cadinfo_mid.remove(8)
-            if len(check_cadinfo_mid)==0:
-                message = "msg_success"
-                print(bcolors.CBLUE2+"Correct cad info files"+bcolors.CEND)
-            else:
-                message = "msg_success" #failed
-                print(bcolors.CYELLOW2+"Wrong cad info files"+bcolors.CEND)
-                for_print = ['in json, '] + [str(x) for x in mid_id_list] + ['detected, '] + \
-                            [str(x) for x in range(1,9) if x not in IKEA.unused_parts[step]]
-                for_print = [bcolors.CYELLOW2+x+bcolors.CEND for x in for_print]
-                print(*for_print)
-    if temp_check==0:
-        message = "msg_success" #failed
-        print(bcolors.CYELLOW2+"failed to find cadinfo in step %d"%(step)+bcolors.CEND)
-
-    return message
-
-def save_cad_center(initial=True, cad_adrs=['']):
+def save_cad_center(initial=True, cad_adrs=[''], load_previous=False):
     mute = True
+    if load_previous:
+        shutil.copy2(os.path.join(opt.cad_path, 'center_backup.json'), os.path.join(opt.cad_path, 'center.json'))
     if cad_adrs != ['']:
         cad_adrs_flag = (',').join(cad_adrs)
         flag = ' -cad_path ' + opt.cad_path + ' -json_path ' + opt.cad_path + ' -initial ' + str(initial) + ' -cad_adrs ' + cad_adrs_flag
@@ -352,6 +309,14 @@ def save_cad_center(initial=True, cad_adrs=['']):
         os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py > ./function/utilities/stdout.txt -- ' + flag + ' 2>&1')
     else:
         os.system(opt.blender + ' -b -P ./function/utilities/save_cad_center.py -- ' + flag)
+
+    if initial:
+        if not os.path.exists(os.path.join(opt.cad_path, 'center.json')):
+            print('Error: Initial step, center.json not created')
+        with open(os.path.join(opt.cad_path, 'center.json'), 'r') as f:
+            backup = json.load(f)
+        with open(os.path.join(opt.cad_path, 'center_backup.json'), 'w') as f:
+            json.dump(backup, f, indent=2, sort_keys=True)
 
 if __name__ == '__main__':
     main()

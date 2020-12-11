@@ -80,27 +80,29 @@ def program_run(csock_S, loop, step=1, add_cad=0):
 #            key = input("Press Enter if the next step process is ready")
 #            if key == "":
 #                break
-
         print(bcolors.CBLUE2+"\n\n(step {})\n".format(i+1)+bcolors.CEND)
         print(bcolors.CBLUE2+bcolors.CBOLD+"1. Program run"+bcolors.CEND)
 #        rospy.sleep(1)
 
-        print(bcolors.CBLUE2+bcolors.CBOLD+"2. SNU status checks"+bcolors.CEND)
-        if i == step-1:
-            send_msg = "check_cad_file#{}#1#{}".format(i+1,add_cad)
+#        print(bcolors.CBLUE2+bcolors.CBOLD+"2. SNU status checks"+bcolors.CEND)
+#        if i == step-1:
+#            send_msg = "check_cad_file#{}#1#{}".format(i+1,add_cad)
+#        else:
+#            send_msg = "check_cad_file#{}#0#{}".format(i+1,add_cad)
+#
+#        csock_S.send(send_msg.encode())
+#
+#        while True:
+#            commend=csock_S.recv(SocketInfo.BUFSIZE)
+#
+#            if commend.decode('utf-8')=="msg_success": # msg_fail : CASE1. 공유 폴더 연결 끊어짐 CASE2. VREP에서 중간산출물 CAD 생성 실패
+#                print(bcolors.CBLUE2+bcolors.CBOLD+"3. Request recognize info"+bcolors.CEND)
+#                break
+
+        if i==step-1:
+            send_msg = "request_recognize_info#%d#1#%d"%(i+1, add_cad) # 서울대에 인식 정보 요청
         else:
-            send_msg = "check_cad_file#{}#0#{}".format(i+1,add_cad)
-
-        csock_S.send(send_msg.encode())
-
-        while True:
-            commend=csock_S.recv(SocketInfo.BUFSIZE)
-
-            if commend.decode('utf-8')=="msg_success": # msg_fail : CASE1. 공유 폴더 연결 끊어짐 CASE2. VREP에서 중간산출물 CAD 생성 실패
-                print(bcolors.CBLUE2+bcolors.CBOLD+"3. Request recognize info"+bcolors.CEND)
-                break
-
-        send_msg = "request_recognize_info" # 서울대에 인식 정보 요청
+            send_msg = "request_recognize_info#%d#0#%d"%(i+1, add_cad)
         csock_S.send(send_msg.encode())
 
         while True:
@@ -130,7 +132,7 @@ def program_run(csock_S, loop, step=1, add_cad=0):
         csock_S.send(filename.encode()) # 해당 이름을 가진 인식 정보 파일 요청
 
         # reSize = 수신할 파일 사이즈
-        reSize = csock_S.recv(SocketInfo.BUFSIZE)  # SNU..?
+        reSize = csock_S.recv(SocketInfo.BUFSIZE)
         reSize = reSize.decode()
 
         # 서울대 디렉토리에서 파일을 못찾아 error를 보냈을 경우
@@ -144,7 +146,6 @@ def program_run(csock_S, loop, step=1, add_cad=0):
         time.sleep(0.5)
 
         # 수신할 파일 사이즈만큼 recv
-
         with open(os.path.join(test_ans_path + filename), 'w', encoding = 'UTF-8') as jsonf:
             data = csock_S.recv(int(reSize))
             jsonf.write(data.decode())
@@ -154,7 +155,7 @@ def program_run(csock_S, loop, step=1, add_cad=0):
 #        snu_mission, snu_info = json_parser.json_parser(ans_path + "mission_{}.json".format(i+1)) # 서울대 인식 결과 호출 함수
 #        PDDL = PDDL_Creator.PDDL_Creator(snu_mission, AAO, plan_path) # PDDL 생성 함수
 #        plan_found = generate_problem_and_plan() # 작업계획 생성 함수
-
+#
 #        if plan_found:
 #            execute_plan.execute_plan(plan_path, i+1) # 중간산출물과 중간산출물 데이터 생성 함수
 
@@ -182,8 +183,7 @@ if __name__ == "__main__":
 
     print("-------------------------------------------")
 
-    print("Kitech initialized")
-#    # wait for services
+    # wait for services
 #    rospy.wait_for_service('/rosplan_planner_interface/planning_server_params')
 
     print("-------------------------------------------")
@@ -226,3 +226,4 @@ if __name__ == "__main__":
     send_msg = "program_end"
     csock_S.send(send_msg.encode())
     csock_S.close()
+    print("Program end")
