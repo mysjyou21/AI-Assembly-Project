@@ -1,10 +1,10 @@
 from Robot import Assembly
-import glob
-import os
+import glob, os
 import cv2
 import time
 import platform
 import pickle
+import json
 from socket import *
 from sys import exit
 from data_file import SocketInfo, bcolors
@@ -24,6 +24,7 @@ AUTO=False
 new_cad_list = [['step1_a.STL', 'step1_b.STL'], ['step2.STL'], ['step3.STL'], ['step4.STL'], ['step5.STL'], ['step6.STL'], ['step7.STL'], ['step8.STL']]
 
 def main():
+    step_filenames = []
     while True:
         try:
             commend = csock.recv(SocketInfo.BUFSIZE)
@@ -61,30 +62,32 @@ def main():
                     minute = int((toc - tic) // 60)
                     return minute, sec
 
+                save_cad_center(initial=True)
+
                 csock.send(("msg_success").encode())
                 print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
-            elif commend.decode('utf-8') == "extract_CAD_info":
-                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] extract CAD info"+bcolors.CEND)
-                # check whether part stl or part obj files in cad folder, json files
-                cad_files = glob.glob(os.path.join(opt.cad_path, '*.obj'))
-                cad_files += glob.glob(os.path.join(opt.cad_path, '*.STL'))
-                cad_files = [os.path.basename(x).replace('.obj','').replace('.stl','') for x in cad_files]
-                check_cad = [x for x in range(1,7) if 'part%d'%(x) in cad_files]
-
-                cadinfo_files = glob.glob(os.path.join(opt.hole_path, '*.json'))
-                cadinfo_files = [os.path.basename(x).replace('.json','') for x in cadinfo_files]
-                check_cadinfo = [x for x in range(1,7) if 'part%d'%(x) in cadinfo_files]
-
-                save_cad_center(initial=True)
-
-                if len(check_cad)==6 and len(check_cadinfo)==6:
-                    print(bcolors.CBLUE2+"Check all 6 base parts cad and cad info files are in right location"+bcolors.CEND)
-                    csock.send(("msg_success").encode())
-                else:
-                    csock.send(("msg_failed").encode()) ### ??
-
-                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
+#            elif commend.decode('utf-8') == "extract_CAD_info": # INVALID
+#                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] extract CAD info"+bcolors.CEND)
+#                # check whether part stl or part obj files in cad folder, json files
+#                cad_files = glob.glob(os.path.join(opt.cad_path, '*.obj'))
+#                cad_files += glob.glob(os.path.join(opt.cad_path, '*.STL'))
+#                cad_files = [os.path.basename(x).replace('.obj','').replace('.stl','') for x in cad_files]
+#                check_cad = [x for x in range(1,7) if 'part%d'%(x) in cad_files]
+#
+#                cadinfo_files = glob.glob(os.path.join(opt.hole_path, '*.json'))
+#                cadinfo_files = [os.path.basename(x).replace('.json','') for x in cadinfo_files]
+#                check_cadinfo = [x for x in range(1,7) if 'part%d'%(x) in cadinfo_files]
+#
+#                save_cad_center(initial=True)
+#
+#                if len(check_cad)==6 and len(check_cadinfo)==6:
+#                    print(bcolors.CBLUE2+"Check all 6 base parts cad and cad info files are in right location"+bcolors.CEND)
+#                    csock.send(("msg_success").encode())
+#                else:
+#                    csock.send(("msg_failed").encode()) ### ??
+#
+#                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
             elif commend.decode('utf-8') == "request_step_num":
                 print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] require step num"+bcolors.CEND)
@@ -175,7 +178,8 @@ def main():
                     if opt.hole_detection_on:
                         IKEA.msn2_hole_detector(step)
                 else:
-                    IKEA.msn2_hole_detector(step)
+                    if opt.hole_detection_on:
+                        IKEA.msn2_hole_detector(step)
 
                 IKEA.group_as_action(step)
                 print(IKEA.actions[step])
@@ -209,6 +213,38 @@ def main():
                     print(bcolors.CBLUE2+'Last Step'+bcolors.CEND)
 
                 print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
+
+            elif commend.decode('utf-8') == "msg_success":
+                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Check the SNU recognition is complete, Request the SNU recognition results' filenames"+bcolors.CEND)
+                # Send step's output file name
+                step_filename = 'mission_%d.json'%(step-1)  # step += 1 after recognize_info
+                step_filenames.append(step_filename)
+                step_filenames_encode = pickle.dumps(step_filenames)
+                csock.send(step_filenames_encode)
+                print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send output filenames' list"+bcolors.CEND)
+
+            elif "mission_" in commend.decode('utf-8'):
+                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request the size of SNU recognition results"+bcolors.CEND)
+                # Send step's output file size
+                step_path = os.path.join(IKEA.opt.output_dir, commend.decode('utf-8'))
+                if os.path.exists(step_path):
+                    with open(step_path, 'r') as f:
+                        step_data = json.load(f)
+                    step_data_size = len(json.dumps(step_data).encode('utf-8'))
+                    if step_data_size > SocketInfo.BUFSIZE:
+                        print(bcolors.CBOLD+"Large size Output, %s"%step_path+bcolors.CEND)
+                    csock.send((str(step_data_size)).encode())
+                    print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send the size of output %s"%(step_path)+bcolors.CEND)
+                else:
+                    csock.send("error".encode())
+                    print(bcolors.CYELLOW2+"File Not Found"+bcolors.CEND) # ...???
+
+            elif commend.decode('utf-8') == "ready":
+                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request SNU recognition results"+bcolors.CEND)
+                # Send step's output file
+                step_data_encode = json.dumps(step_data)
+                csock.send(step_data_encode.encode())
+                print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send output file %s"%(step_path)+bcolors.CEND)
 
             elif commend.decode('utf-8') == "program_end":
                 print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Program Finish"+bcolors.CEND)
@@ -285,6 +321,10 @@ def cadinfo_check(step, IKEA):
             temp_check=1
             mid_id_list = [int(x.replace('part','')) for x in mid_hole_XYZ.keys()]
             check_cadinfo_mid = [x for x in mid_id_list if x in IKEA.unused_parts[step]]
+            if 2 not in IKEA.unused_parts[step] and 7 in check_cadinfo_mid: # 2 becomes 7 after 1 step
+                check_cadinfo_mid.remove(7)
+            if 3 not in IKEA.unused_parts[step] and 8 in check_cadinfo_mid: # 3 becomes 8 after 1 step
+                check_cadinfo_mid.remove(8)
             if len(check_cadinfo_mid)==0:
                 message = "msg_success"
                 print(bcolors.CBLUE2+"Correct cad info files"+bcolors.CEND)

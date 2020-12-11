@@ -74,7 +74,7 @@ class DetectionModel():
                 self.model_rpn.load_weights(self.C.model_path, by_name=True)
                 self.model_classifier.load_weights(self.C.model_path, by_name=True)
 
-    def test(self, img):
+    def test_for_components(self, img):
 
         bbox_threshold = 0.8
 
@@ -145,12 +145,149 @@ class DetectionModel():
                 probs[cls_name].append(np.max(P_cls[0, ii, :]))
 
         components_dict = {}
-        # confidences_dict = {}
 
         for key in bboxes:
             bbox = np.array(bboxes[key])
 
             new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0.4)
+
+            for jk in range(new_boxes.shape[0]):
+                (x1, y1, x2, y2) = new_boxes[jk, :]
+
+                (real_x1, real_y1, real_x2, real_y2) = self.get_real_coordinates(ratio, x1, y1, x2, y2)
+                (real_x, real_y, real_w, real_h) = real_x1, real_y1, real_x2 - real_x1, real_y2 - real_y1
+
+                if key not in components_dict:
+                    components_dict[key] = []
+                # if key not in confidences_dict:
+                #     confidences_dict[key] = []
+
+                components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[jk]])
+                # confidences_dict[key].append(new_probs[jk])
+
+        for key in self.C.class_mapping.values():
+            if key not in components_dict:
+                components_dict[key] = []
+            # if key not in confidences_dict:
+            #     confidences_dict[key] = []
+
+        return components_dict
+
+
+    def test_for_parts(self, img):
+
+        bbox_threshold = 0.8
+
+        X, ratio = self.format_img(img)
+        if K.image_dim_ordering() == 'tf':
+            X = np.transpose(X, (0, 2, 3, 1))
+
+        # get the feature maps and output from the RPN
+
+        with self.graph_detect.as_default():
+            with self.sess_detect.as_default():
+                [Y1, Y2, F] = self.model_rpn.predict(X)
+
+        R = roi_helpers.rpn_to_roi(Y1, Y2, self.C, K.image_dim_ordering(), overlap_thresh=0.7)
+
+        # convert from (x1, y1, x2, y2) to (x, y, w, h)
+        R[:, 2] -= R[:, 0]
+        R[:, 3] -= R[:, 1]
+
+        # apply the spatial pyramid pooling to the proposed regions
+        bboxes = {}
+        probs = {}
+
+        for jk in range(R.shape[0] // self.C.num_rois + 1):
+            ROIs = np.expand_dims(R[self.C.num_rois * jk : self.C.num_rois * (jk + 1), :], axis=0)
+            if ROIs.shape[1] == 0:
+                 break
+
+            if jk == R.shape[0] // self.C.num_rois:
+                # pad R
+                curr_shape = ROIs.shape
+                target_shape = (curr_shape[0], self.C.num_rois, curr_shape[2])
+                ROIs_padded = np.zeros(target_shape).astype(ROIs.dtype)
+                ROIs_padded[:, :curr_shape[1], :] = ROIs
+                ROIs_padded[0, curr_shape[1]:, :] = ROIs[0, 0, :]
+                ROIs = ROIs_padded
+            with self.graph_detect.as_default():
+                with self.sess_detect.as_default():
+                    [P_cls, P_regr] = self.model_classifier_only.predict([F, ROIs])
+
+            for ii in range(P_cls.shape[1]):
+                cls_name = self.C.class_mapping[np.argmax(P_cls[0, ii, :])]
+                ###########################
+                # bbox_threshold = 0.94
+                ###########################
+                if np.max(P_cls[0, ii, :]) < bbox_threshold or np.argmax(P_cls[0, ii, :]) == (P_cls.shape[2] - 1):
+                    continue
+
+                if cls_name not in bboxes:
+                    bboxes[cls_name] = []
+                    probs[cls_name] = []
+
+                (x, y, w, h) = ROIs[0, ii, :]
+
+                cls_num = np.argmax(P_cls[0, ii, :])
+                try:
+                    (tx, ty, tw, th) = P_regr[0, ii, 4 * cls_num : 4 * (cls_num + 1)]
+                    tx /= self.C.classifier_regr_std[0]
+                    ty /= self.C.classifier_regr_std[1]
+                    tw /= self.C.classifier_regr_std[2]
+                    th /= self.C.classifier_regr_std[3]
+                    x, y, w, h = roi_helpers.apply_regr(x, y, w, h, tx, ty, tw, th)
+                except:
+                    pass
+                bboxes[cls_name].append(
+                    [self.C.rpn_stride * x, self.C.rpn_stride * y, self.C.rpn_stride * (x + w), self.C.rpn_stride * (y + h)]
+                )
+                probs[cls_name].append(np.max(P_cls[0, ii, :]))
+
+        components_dict = {}
+
+        bboxes_copy = {}
+        probs_copy = {}
+
+        for key in bboxes:
+            bboxes_copy[key] = []
+            probs_copy[key] = []
+
+        for key in bboxes:
+            bbox = np.array(bboxes[key])
+            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0.4)
+            idxs = np.argsort(new_probs)[::-1]
+            if key == '5' and len(new_boxes) > 1:
+                new_boxes_5 = new_boxes[idxs[0]].tolist()
+                new_probs_5 = new_probs[idxs[0]]
+                new_boxes_6 = new_boxes[idxs[1]].tolist()
+                new_probs_6 = new_probs[idxs[1]]
+                if '6' not in bboxes_copy:
+                    bboxes_copy['6'] = []
+                    probs_copy['6'] = []
+                bboxes_copy['5'].append(new_boxes_5)
+                probs_copy['5'].append(new_probs_5)
+                bboxes_copy['6'].append(new_boxes_6)
+                probs_copy['6'].append(new_probs_6)
+            elif key == '6' and len(new_boxes) > 1:
+                new_boxes_6 = new_boxes[idxs[0]].tolist()
+                new_probs_6 = new_probs[idxs[0]]
+                new_boxes_5 = new_boxes[idxs[1]].tolist()
+                new_probs_5 = new_probs[idxs[1]]
+                if '5' not in bboxes_copy:
+                    bboxes_copy['5'] = []
+                    probs_copy['5'] = []
+                bboxes_copy['6'].append(new_boxes_6)
+                probs_copy['6'].append(new_probs_6)
+                bboxes_copy['5'].append(new_boxes_5)
+                probs_copy['5'].append(new_probs_5)
+            else:
+                bboxes_copy[key] += new_boxes.tolist()
+                probs_copy[key] += new_probs.tolist()
+
+        for key in bboxes_copy:
+            bbox = np.array(bboxes_copy[key])
+            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs_copy[key]), overlap_thresh=-1)
 
             for jk in range(new_boxes.shape[0]):
                 (x1, y1, x2, y2) = new_boxes[jk, :]

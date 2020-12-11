@@ -462,10 +462,10 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
                 group_idx = old_obj[-1]
                 new_obj_list[group_idx].append(old_obj[0:4])
 
-    # serial은 있는데 mult가 빈 list 인 경우, mult_list를 [['1']]로 replace
+    # serial은 있는데 mult가 빈 list 인 경우 (ex. stefan step 9), mult_list를 [['-1']]로 replace
     for n, serial_OCR_list in enumerate(serials_OCR_list_new):
         if len(serials_OCR_list) != 0 and len(mults_OCR_list_new[n]) == 0:
-            mults_OCR_list_new[n] = ['1']
+            mults_OCR_list_new[n] = ['-1']
 
     return circles_new, connectors_list_new, connectors_serial_list_new, connectors_mult_list_new, tools_list_new, \
            serials_OCR_list_new, mults_OCR_list_new, step_parts_list, parts_info_list, is_merged

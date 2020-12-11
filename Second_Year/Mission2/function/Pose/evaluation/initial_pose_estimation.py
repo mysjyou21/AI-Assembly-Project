@@ -3,6 +3,7 @@ import glob
 import cv2
 import pickle
 import json
+import time
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -47,18 +48,33 @@ class InitialPoseEstimation():
         self.pose_function_path = './function/Pose'
         self.pose_data_path = self.pose_function_path + '/data'
 
+        # load weights
         with args.graph_pose.as_default():
             sess = args.sess_pose
             self.model = CorrespondenceBlockModel(3, 9, 256) # in channels, id channels, uvw channels
-            print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
-            checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
+            if args.mission1:
+                print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan.pt')
+                checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan.pt', map_location='cuda:0')
+            else:
+                print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
+                checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             self.model.cuda(0)
-        with open(self.pose_data_path + '/uvw_xyz_correspondences_new.pkl', 'rb') as f:
-            self.correspondence_dicts = pickle.load(f)
 
-        refresh_folder(args.opt.initial_pose_estimation_image_path)
+        # load data
+        with open(self.pose_data_path + '/uvw_xyz_correspondences.pkl', 'rb') as f:
+            self.correspondence_dicts = pickle.load(f)
+        with open(self.pose_data_path + '/point_cloud.pkl', 'rb') as f:
+            self.point_cloud_radii = pickle.load(f)
+            self.point_clouds = pickle.load(f)
+        for i in range(len(self.point_clouds)):
+            sampleNum = 500 if i==0 or i==4 or i==5 else 300
+            self.point_clouds[i] = self.point_clouds[i][np.random.choice(self.point_clouds[i].shape[0], sampleNum, replace=False)]
+        self.point_clouds = [x / 100 for x in self.point_clouds]
+        refresh_folder(args.opt.initial_pose_estimation_prediction_maps_path)
+        refresh_folder(args.opt.initial_pose_estimation_visualization_path)
+        refresh_folder(args.opt.initial_pose_estimation_visualization_separate_path)
         refresh_folder(args.opt.part_id_pose_path)
 
 
@@ -103,7 +119,7 @@ class InitialPoseEstimation():
             W = wmask_pred.astype(np.uint8)
             UVW = np.stack((U, V, W), axis=-1)
             if args.opt.save_pose_prediction_maps:
-                save_path = args.opt.initial_pose_estimation_image_path
+                save_path = args.opt.initial_pose_estimation_prediction_maps_path
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 cv2.imwrite(save_path + '/STEP{}_ID.png'.format(step_num), ID_color)
@@ -327,13 +343,96 @@ class InitialPoseEstimation():
         mapping_2d = np.array(mapping_2d).astype(np.float32)
         mapping_3d = np.array(mapping_3d).astype(np.float32)
         if len(mapping_2d) >= 6 or len(mapping_3d) > 6:
-            _, rvecs, tvecs, inliers = cv2.solvePnPRansac(mapping_3d, mapping_2d, K, distCoeffs=None, iterationsCount=150, reprojectionError=1, flags=cv2.SOLVEPNP_EPNP)
+            _, rvecs, tvecs, inliers = cv2.solvePnPRansac(mapping_3d, mapping_2d, K, distCoeffs=None, iterationsCount=300, reprojectionError=1.2, flags=cv2.SOLVEPNP_EPNP)
             rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
             return rot, tvecs
         else:
             return np.eye(3), np.array([0, 0, 25]).reshape(3, 1)
 
-    
+
+    def save_pose_visualization(self, args, step_num, save_sep=True):
+        color = Color()
+        step_img = args.steps[step_num].copy()
+        if save_sep:
+            step_imgs = []
+            for i in range(len(args.cad_names)):
+                step_imgs.append(step_img.copy())
+        H, W, _ = step_img.shape
+        cad_models = args.cad_models[step_num]
+        obj_ids = [int(x.replace('part', '')) for x in cad_models]
+        poses = args.pose_return_dict[step_num]
+        K = args.K
+        for obj_id, RT in zip(obj_ids, poses):
+            obj_idx = obj_id - 1
+            pts_color = color(obj_id)
+            R = RT[:,:3]
+            if np.all(R == np.eye(3)):
+                continue
+            T = RT[:,3].reshape(3, 1)
+            pts = self.point_clouds[obj_idx]
+
+            # project points
+            projected_2d_pts = self.project_pts(pts, K, R, T).astype(int)
+            projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
+            projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
+            for pt in projected_2d_pts:
+                cv2.circle(step_img, (pt[0], pt[1]), 7, pts_color, -1)
+            if save_sep:
+                for pt in projected_2d_pts:
+                    cv2.circle(step_imgs[obj_idx], (pt[0], pt[1]), 7, pts_color, -1)
+            
+            # draw axes
+            arrow_length = 1
+            axis_pts = np.array([[0 ,0, 0], [arrow_length, 0, 0], [0, arrow_length, 0], [0, 0, arrow_length]])
+            projected_2d_pts = self.project_pts(axis_pts, K, R, T).astype(int)
+            projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
+            projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
+            
+            center = projected_2d_pts[0]
+            xaxis = projected_2d_pts[1]
+            yaxis = projected_2d_pts[2]
+            zaxis = projected_2d_pts[3]
+            cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 0), 12)
+            cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 255), 8)
+            cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 0, 0), 12)
+            cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 255, 255), 8)
+            cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (0, 0, 0), 12)
+            cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (153, 0, 0), 8)
+            if save_sep:
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 255), 8)
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 255, 255), 8)
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (153, 0, 0), 8)
+        cv2.imwrite(args.opt.initial_pose_estimation_visualization_path + '/STEP_{}.png'.format(step_num), step_img)
+        if save_sep:
+            template = []
+            for i in range(len(args.cad_names)):
+                step_img_sep = step_imgs[i]
+                template = np.concatenate((template, step_img_sep), axis=1) if len(template) else step_img_sep
+            cv2.imwrite(args.opt.initial_pose_estimation_visualization_separate_path + '/STEP_{}.png'.format(step_num), template)
+        
+
+
+
+    def project_pts(self, pts, K, R, t):
+      """Projects 3D points.
+
+      :param pts: nx3 ndarray with the 3D points.
+      :param K: 3x3 ndarray with an intrinsic camera matrix.
+      :param R: 3x3 ndarray with a rotation matrix.
+      :param t: 3x1 ndarray with a translation vector.
+      :return: nx2 ndarray with 2D image coordinates of the projections.
+      """
+      assert (pts.shape[1] == 3)
+      P = K.dot(np.hstack((R, t)))
+      pts_h = np.hstack((pts, np.ones((pts.shape[0], 1))))
+      pts_im = P.dot(pts_h.T)
+      pts_im /= pts_im[2, :]
+      return pts_im[:2, :].T
+
+
     def save_part_id_pose(self, args, step_num, matched_poses):
         cad_models = args.cad_models[step_num]
         part_imgs = args.parts_bboxed[step_num]

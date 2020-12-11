@@ -14,7 +14,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
     parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission1'))
 
-    parser.add_argument('--json_dir', default='./output')
+    parser.add_argument('--output_dir', default='./output')
     parser.add_argument('--eval_print', default=False)
     parser.add_argument('--save_detection', default=True)
     parser.add_argument('--save_serial', default=True)
@@ -69,7 +69,7 @@ def init_args(description='Robot'):
     opt.part_id_pose_path = os.path.join(opt.intermediate_results_path, 'part_id_pose')
     opt.part_hole_path = os.path.join(opt.intermediate_results_path, 'part_hole')
 
-    opt.json_dir = os.path.join(opt.json_dir, opt.assembly_name)
+    opt.output_dir = os.path.join(opt.output_dir, opt.assembly_name)
 
     opt.eval_print = string2bool(opt.eval_print)
     opt.save_serial = string2bool(opt.save_serial)

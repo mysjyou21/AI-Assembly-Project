@@ -703,7 +703,7 @@ class Assembly():
         self.actions[step_num] = action_group_step
 
     def write_mission(self, step_num):  # 은지(전체파트), 선지(write_csv_mission2부분 action labeling관련 다듬기)
-        """ Write the results in json file, in self.opt.json_dir """
+        """ Write the results in json file, in self.opt.output_dir """
         with open('./function/utilities/label_to_pose.json', 'r') as f:
             pose_dic = json.load(f)
         step_actions = self.actions[step_num]
@@ -718,7 +718,7 @@ class Assembly():
         if len(step_hole_pair) > 1:
             step_actions[0].append(step_hole_pair) # assume: 2,3,4,5. only 1 action in each step
         if step_num == 1:
-            if os.path.exists(self.opt.json_dir):
-                shutil.rmtree(self.opt.json_dir)
+            if os.path.exists(self.opt.output_dir):
+                shutil.rmtree(self.opt.output_dir)
 
-        write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.json_dir)
+        write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.output_dir)

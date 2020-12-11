@@ -159,15 +159,15 @@ def write_csv_mission(actions, cut_path, step_path, csv_dir):
 #                write_list.append('')
         csv_writer.writerow(write_list)
 
-def write_json_mission(actions, cut_path, step_path, json_dir):
+def write_json_mission(actions, cut_path, step_path, output_dir):
     """ write contents in actions, in json format
         actions: [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]"""
 
     filename = cut_path.split('/')[-2]
-    if not os.path.exists(json_dir):
-        os.makedirs(json_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    f = open(os.path.join(json_dir, 'mission_%s.json' % step_path), 'w')
+    f = open(os.path.join(output_dir, 'mission_%s.json' % step_path), 'w')
 
     step_dic = OrderedDict()
     step_dic['File_name'] = filename

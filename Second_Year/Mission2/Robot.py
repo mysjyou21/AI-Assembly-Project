@@ -33,6 +33,7 @@ class Assembly():
 
     def __init__(self, opt):
         self.opt = opt
+        self.mission1 = opt.mission1 # mission1 mode
         self.cuts = []
         self.cut_names = []
         self.steps = {}
@@ -279,14 +280,20 @@ class Assembly():
         self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
         self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
 
+        # temp settings
+        if self.opt.assembly_name == 'stefan':
+            if step_num == 2:
+                if self.opt.temp_settings:
+                    self.parts_info[step_num] = ['part8', 'part6']
+
 
     def component_detector(self, step_num):  # 준형
         """ Detect the components in the step image, return the detected components' locations (x, y, w, h, group_index)
             component list: (using Faster R-CNN) connector(image), tool(image), circle, rectangle, (다른게 있으면 추가로!) """
         step_img = self.steps[step_num]
 
-        components_dict1 = self.detect_model1.test(step_img)
-        components_dict2 = self.detect_model2.test(step_img)
+        components_dict1 = self.detect_model1.test_for_components(step_img)
+        components_dict2 = self.detect_model2.test_for_parts(step_img)
         # print(components_dict1)
         # print(components_dict2)
         circles = components_dict1['Guidance_Circle']
@@ -499,12 +506,18 @@ class Assembly():
         # pose prediction
         # update self.pose_return_dict, self.cad_models
         self.pose_model.test(self, step_num)
+        # update self.parts_info
+        self.parts_info[step_num] = self.cad_models[step_num]
 
-        # individual parts pose visualization
+        # pose visualization
+        if self.opt.save_pose_visualization:
+            self.pose_model.save_pose_visualization(self, step_num, self.opt.save_pose_visualization_separate)
+
+        # classify to nearest GT pose
         def closest_gt_RT_index(RT_pred):
             return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
-
         matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+        # individual parts pose visualization
         if self.opt.save_part_id_pose:
             self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
@@ -537,12 +550,12 @@ class Assembly():
             pose_dic = json.load(f)
 
         if step_num == 1:
-            if os.path.exists(self.opt.csv_dir):
-                shutil.rmtree(self.opt.csv_dir)
+            if os.path.exists(self.opt.output_dir):
+                shutil.rmtree(self.opt.output_dir)
 
         filename = self.opt.cut_path.split('/')[-2]
-        if not os.path.exists(self.opt.csv_dir):
-            os.makedirs(self.opt.csv_dir)
+        if not os.path.exists(self.opt.output_dir):
+            os.makedirs(self.opt.output_dir)
 
         ######## 1. mapping action first #######
         if self.is_merged[step_num] == True:  # (원 두개 붙어서 나오는 경우  ex - stefan step9) 따로 해결
@@ -553,7 +566,7 @@ class Assembly():
             self.step_action['serials'] = self.connectors_serial_OCR[step_num]
             self.step_action['mult'] = self.connectors_mult_OCR[step_num]
             self.step_action['action'] = ['']
-            if len(material) == 1 and ['122925'] in material: self.step_action['action'] = ['A003', 'A004']
+            if len(material) == 1 and ['122925'] in material: self.step_action['action'] = ['A003', 'A001']
 
         else:
             if len(material) == 1 and material != [[]]:
@@ -561,7 +574,7 @@ class Assembly():
                 self.step_action['serials'] = serials
                 self.step_action['mult'] = circle_num
                 self.step_action['action'] = circle_action
-            elif (material == [[]]) and (len(self.parts_info[step_num]) - 1) == 1:  # 원이 안나오고 part 1개면 -> A005
+            elif (material == []) and (len(self.parts_info[step_num]) - 1) == 1:  # 원이 안나오고 part 1개면 -> A005
                 self.step_action['serials'] = ['']
                 self.step_action['mult'] = ['1']
                 self.step_action['action'] = ['A006']
@@ -579,7 +592,7 @@ class Assembly():
         connectivity = self.parts_info[step_num][-1]
 
         ########### 2. write mission json ########
-        f = open(os.path.join(self.opt.csv_dir, 'mission_%s.json' % str(step_num)), 'w')
+        f = open(os.path.join(self.opt.output_dir, 'mission_%s.json' % str(step_num)), 'w')
 
         step_dic = OrderedDict()
         step_dic['File_name'] = filename
@@ -599,8 +612,8 @@ class Assembly():
                         part = ['', '', '']
                     if part[0] != '':
                         part_id = part[0]  # 'string'
-                        if part_id == 'part7': part_id = 'step1_a'
-                        if part_id == 'part8': part_id = 'step1_b'
+                        if part_id == 'part7': part_id = 'step1_b'
+                        if part_id == 'part8': part_id = 'step1_a'
                         part_pose_ind = part[1]
                         part_pose_lab = pose_dic[str(part_pose_ind)]
                         part[1] = part_pose_lab.split('_')
@@ -619,21 +632,26 @@ class Assembly():
                 action_lab_dic = OrderedDict()
                 action_lab_dic['label'] = self.step_action['action'][act_i]
 
-                if len(mults) == 0:
-                    mults = ['1']
-                action_lab_dic['#'] = mults[0][0]
-                action_dic['Action'] = action_lab_dic
+                if action_lab_dic['label']=='A003':
+                    action_lab_dic['#'] = mults[0][0]
+                    action_dic['Action'] = action_lab_dic
 
-                connector_dic = OrderedDict()
-                serials = self.step_action['serials']
-                if len(serials) == 0:
-                    serials = ['']
-                elif len(serials[0]) == 0:
-                    mults[0] = '1'
-                connector_dic['label'] = 'C' + serials[0][0] if len(serials[0]) > 0 else serials[0]
-                connector_dic['#'] = mults[0][0]
-                action_dic['Connector'] = connector_dic
-                action_dic['HolePair'] = self.hole_pairs[step_num]
+                    connector_dic = OrderedDict()
+                    connector_dic['label'] = ''
+                    connector_dic['#'] = '1'
+                    action_dic['Connector'] = connector_dic
+                    action_dic['HolePair'] = self.hole_pairs[step_num]
+                else:
+                    serials = self.step_action['serials']
+                    action_lab_dic['#'] = mults[0][0]
+                    action_dic['Action'] = action_lab_dic
+
+                    connector_dic = OrderedDict()
+                    connector_dic['label'] = 'C' + serials[0][0]
+                    connector_dic['#'] = mults[0][0]
+                    action_dic['Connector'] = connector_dic
+                    action_dic['HolePair'] = self.hole_pairs[step_num]
+
 
                 step_dic['Action%d' % act_i] = action_dic
             if len(self.step_action['action']) == 0: step_dic['Action0'] = return_empty_dict
@@ -645,18 +663,30 @@ class Assembly():
         elif self.step_action['serials'] != [''] and len(self.step_action['serials']) == 1:
             # serial이 허수는 아니며 정상적으로 들어옴 ! ( general case )
             if connectivity == '':  # serial은 1개 인데 connectivity가 X -> step1 같은 상황
-                for act_i in range(len(self.parts_info[step_num]) - 1):
+                step_part = copy.deepcopy(self.parts_info[step_num])
+                if self.step_action['parts#']==2:
+                    part_id = []
+                    for idx in range(0,2):
+                        part_id.append(step_part[idx][0])
+                    if part_id == ['part2','part3']:
+                        temp = copy.deepcopy(step_part)
+                        step_part[0] = temp[1]
+                        step_part[1] = temp[0]
+
+                for act_i in range(len(step_part) - 1):
                     action_dic = OrderedDict()
                     for i in range(0, 4):
                         part_dic = OrderedDict()
                         if i == 0:
-                            part = copy.deepcopy(self.parts_info[step_num][act_i])
+                            part = copy.deepcopy(step_part[act_i])
                             if self.step_action['parts#']!=1: mults = [str(len(part[2]))]
                             else: mults = self.step_action['mult']
                         else:
                             part = ['', '', '']
                         if part[0] != '':
                             part_id = part[0]  # 'string'
+                            if part_id == 'part7': part_id = 'step1_b'
+                            if part_id == 'part8': part_id = 'step1_a'
                             part_pose_ind = part[1]
                             part_pose_lab = pose_dic[str(part_pose_ind)]
                             part[1] = part_pose_lab.split('_')
@@ -703,8 +733,8 @@ class Assembly():
                             part = ['', '', '']
                         if part[0] != '':
                             part_id = part[0]  # 'string'
-                            if part_id == 'part7': part_id = 'step1_a'
-                            if part_id == 'part8': part_id = 'step1_b'
+                            if part_id == 'part7': part_id = 'step1_b'
+                            if part_id == 'part8': part_id = 'step1_a'
                             part_pose_ind = part[1]
                             part_pose_lab = pose_dic[str(part_pose_ind)]
                             part[1] = part_pose_lab.split('_')
@@ -751,8 +781,8 @@ class Assembly():
                     part = ['', '', '']
                 if part[0] != '':
                     part_id = part[0]  # 'string'
-                    if part_id == 'part7': part_id = 'step1_a'
-                    if part_id == 'part8': part_id = 'step1_b'
+                    if part_id == 'part7': part_id = 'step1_b'
+                    if part_id == 'part8': part_id = 'step1_a'
                     part_pose_ind = part[1]
                     part_pose_lab = pose_dic[str(part_pose_ind)]
                     part[1] = part_pose_lab.split('_')
@@ -782,6 +812,23 @@ class Assembly():
             connector_dic['#'] = '1'
             action_dic['Connector'] = connector_dic
             action_dic['HolePair'] = self.hole_pairs[step_num]
+
+            step_dic['Action%d' % 0] = action_dic
+        else:
+            action_dic = OrderedDict()
+            for i in range(0, 4):
+                part_dic = {}
+                action_dic['Part%d' % i] = part_dic
+            action_lab_dic = OrderedDict()
+            action_lab_dic['label'] = ''
+            action_lab_dic['#'] = ''
+            action_dic['Action'] = action_lab_dic
+
+            connector_dic = OrderedDict()
+            connector_dic['label'] = ''
+            connector_dic['#'] = ''
+            action_dic['Connector'] = connector_dic
+            action_dic['HolePair'] = []
 
             step_dic['Action%d' % 0] = action_dic
 
@@ -830,40 +877,11 @@ class Assembly():
             pass
 
 
-    def write_csv_mission(self, step_num, option=0):  # 은지(전체파트), 선지(write_csv_mission2부분 action labeling관련 다듬기)
-        """ Write the results in csv file, option=1, 2, 3 is 1-year challenge's output """
-        if option == 1:
-            write_csv_mission1_1st_year(self.connector_serial_OCR_index, self.connector_mult_OCR_each_group,
-                                        self.opt.cut_path, self.opt.csv_dir)
-        elif option == 2:
-            write_csv_mission2_1st_year(self.connector_serial_OCR_index, self.connector_mult_OCR_each_group,
-                                        self.opt.cut_path, self.opt.csv_dir)
-        elif option == 0:
-            with open('./function/utilities/label_to_pose.json', 'r') as f:
-                pose_dic = json.load(f)
-            step_actions = self.actions[step_num]
-            step_hole_pair = self.hole_pairs.get(step_num, [])
-#            print('hole %d'%(step_num), step_hole_pair)
-            for action in step_actions:
-                for i in range(0, 4):
-                    part = list(action[i])
-                    if part[0] != '':
-                        part_pose_ind = part[1]
-                        part_pose_lab = pose_dic[str(part_pose_ind)]
-                        action[i][1] = part_pose_lab.split('_')
-            if step_hole_pair != []:
-                step_actions[0].append(step_hole_pair)
-            if step_num == 1:
-                if os.path.exists(self.opt.csv_dir):
-                    shutil.rmtree(self.opt.csv_dir)
-
-            write_json_mission(step_actions, self.opt.cut_path, str(step_num), self.opt.csv_dir)
-
     def msn2_hole_detector(self, step_num):
         ##### General Variables #####
-        step_images = self.steps
-        connectors = self.connectors_serial_OCR
-        mults = self.connectors_mult_OCR
+        step_images = self.steps.copy()
+        connectors = self.connectors_serial_OCR.copy()
+        mults = self.connectors_mult_OCR.copy()
 
         if len(connectors[step_num]) != 0:
             if len(connectors[step_num][0]) != 0:
@@ -880,14 +898,14 @@ class Assembly():
                 mults[step_num] = [[]]
         else:
             mults[step_num] = [[]]
-        
+
 
         ##### Eliminate from fastener candidate #####
         component_list = list()
-        circles_loc = self.circles_loc[step_num]
-        rectangles_loc = self.rectangles_loc[step_num]
-        connectors_loc = self.connectors_loc[step_num]
-        tools_loc = self.tools_loc[step_num]
+        circles_loc = self.circles_loc[step_num].copy()
+        rectangles_loc = self.rectangles_loc[step_num].copy()
+        connectors_loc = self.connectors_loc[step_num].copy()
+        tools_loc = self.tools_loc[step_num].copy()
         if len(circles_loc)!=0:
             for circle in circles_loc:
                 component_list.append(circle)
@@ -932,7 +950,7 @@ class Assembly():
             new_id_list = self.parts_info[step_num]
             new_pose_list = self.pose_return_dict[step_num]
             assert len(new_id_list) == len(new_pose_list)
-            
+
             parts_info_list = list()
             for i in range(len(new_id_list)):
                 part_info = (new_id_list[i], new_pose_list[i])

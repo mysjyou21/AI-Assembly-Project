@@ -1,6 +1,9 @@
 import json
 import numpy as np
-import os
+import os, glob
+
+# part7 = step1_b = part2 + C122620_3, C122620_4
+# part8 = step1_a = part3 + C122620_1, C122620_2
 
 def mid_loader(step_name, json_path, center_dir, scale=100):
     """ input: step_name = 'step3'
@@ -18,8 +21,37 @@ def mid_loader(step_name, json_path, center_dir, scale=100):
     part_dic = part_data["data"]
     holes = part_dic["hole"]
     holename = [x for x in sorted(holes.keys())]
+    holename1 = sorted(sorted([x for x in holename if 'C122620' not in x], key=lambda x:int(x.split('-')[1].split('_')[1])), key=lambda x: x.split('-')[0]) #key=lambda x:int(x.split('-')[0].split('_')[1]))
+    holename2 = sorted(sorted([x for x in holename if 'C122620' in x], key=lambda x:int(x.split('-')[1].split('_')[1])), key=lambda x:int(x.split('-')[0].split('_')[1]))
+    holename = holename1 + holename2
+#    print(step_name, '::', ', '.join(holename)) #debug
     id_list = list(set([hole.split('-')[0] for hole in holename]))
-    id_list = [x.replace('_1','') if 'C122620' not in x else 'part8' if (x=='C122620_1' or x=='C122620_2') else 'part7' for x in id_list]
+    ############# TO DEAL WITH PART7, PART8###
+    # determine 'part7'(part7_exist=1) in id_list, 'part8'(part8_exist=1) in id_list
+    part7_exist = 0
+    part8_exist = 0
+    if 'part2_1' in id_list and len([x for x in id_list if 'C122620' in x])>0:
+        part7_exist = 1
+    if 'part3_1' in id_list and len([x for x in id_list if 'C122620' in x])>0:
+        part8_exist = 1
+    if part7_exist and part8_exist:
+        with open('%s/%s.json'%(json_path, 'step1_b'), 'r') as f:
+            part7_data = json.load(f)['data']
+        with open('%s/%s.json'%(json_path, 'step1_a'), 'r') as f:
+            part8_data = json.load(f)['data']
+
+        part7_Cind = [x.split('-')[0] for x in part7_data['hole'].keys() if 'C122620' in x]
+        part7_Cind = list(set(part7_Cind))
+        part8_Cind = [x.split('-')[0] for x in part8_data['hole'].keys() if 'C122620' in x]
+        part8_Cind = list(set(part7_Cind))
+
+        id_list = [x.replace('_1','') if 'C122620' not in x else 'part7' if x in part7_Cind else 'part8' for x in id_list]
+    elif part7_exist or part8_exist:
+        amb_id = 'part7' if part7_exist else 'part8'
+        id_list = [x.replace('_1','') if 'C122620' not in x else amb_id for x in id_list]
+    else:
+        id_list = [x.replace('_1','') for x in id_list]
+    ###########################################
     id_list = list(set(id_list))
 
     hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
@@ -28,13 +60,8 @@ def mid_loader(step_name, json_path, center_dir, scale=100):
     else:
         print('No center data, ', step_name)
         center_XYZ = [0,0,0]
-#    if "CenterPointX" in part_dic.keys():
 #        center_XYZ = [part_dic["CenterPointX"], part_dic["CenterPointY"], part_dic["CenterPointZ"]]
-#    else:
-#        center_XYZ = [0,0,0]
-#    if "MinPointX" in part_dic.keys():
 #        min_XYZ = [part_dic["MinPointX"], part_dic["MinPointY"], part_dic["MinPointZ"]]
-#    else:
     min_XYZ = [0,0,0]
 
     center_XYZ = np.array(list(map(float, center_XYZ)))/scale
@@ -45,21 +72,29 @@ def mid_loader(step_name, json_path, center_dir, scale=100):
     hole_XYZ = np.stack(hole_XYZ)
 
     part_hole_idx = np.array([hole.split('-')[0] for hole in holename])
-    part_hole_idx = np.array([x.replace('_1','') if 'C122620' not in x else 'part8' if (x=='C122620_1' or x=='C122620_2') else 'part7' for x in part_hole_idx])
+    ############# TO DEAL WITH PART7, PART8###
+    if part7_exist and part8_exist:
+        part_hole_idx = np.array([x.replace('_1','') if 'C122620' not in x else 'part7' if x in part7_Cind else 'part8' for x in part_hole_idx])
+    elif part7_exist or part8_exist:
+        part_hole_idx = np.array([x.replace('_1','') if 'C122620' not in x else amb_id for x in part_hole_idx])
+    else:
+        part_hole_idx = np.array([x.replace('_1','') for x in part_hole_idx])
+    ###########################################
 
     part_hole_dic = {}
     for id in id_list:
         idx = np.where(part_hole_idx == id)[0]
+#        print(id, ':', ','.join(list(map(holename.__getitem__, idx)))) # debug
         part_hole_XYZ = hole_XYZ[idx]
         part_hole_dic[id] = part_hole_XYZ
 
     if 'part7' in id_list:
-        assert 'part2' in id_list
-        part_hole_dic['part7'] = np.concatenate([part_hole_dic['part7'], part_hole_dic['part2']])
+        assert 'part2' in id_list, "part7 has to contain holes with name part2_1-hole_#"
+        part_hole_dic['part7'] = np.concatenate([part_hole_dic['part2'], part_hole_dic['part7']])
         del part_hole_dic['part2']
     if 'part8' in id_list:
-        assert 'part3' in id_list
-        part_hole_dic['part8'] = np.concatenate([part_hole_dic['part8'], part_hole_dic['part3']])
+        assert 'part3' in id_list, "part8 has to contain holes with name part3_1-hole_#"
+        part_hole_dic['part8'] = np.concatenate([part_hole_dic['part3'], part_hole_dic['part8']])
         del part_hole_dic['part3']
 
     return part_hole_dic
@@ -70,10 +105,16 @@ def base_loader(part_name, json_path, center_dir, scale=100):
         output: hole_XYZ(np array), #norm_XYZ(np array),
                 hole_dic={hole_name: [CenterX, CenterY, CenterZ]} #, NormalX, NormalY, NormalZ]}
                 hole_name: 'part2_1-hole_3' """
-    if part_name == "part7":
-        part_name = "step1_b"
-    elif part_name == "part8":
-        part_name = "step1_a"
+    ############# TO DEAL WITH PART7, PART8###
+    if part_name == "part7" or part_name == "part8":
+        check_files = [os.path.basename(x).replace('.json','') for x in glob.glob('%s/step1*.json'%(json_path))]
+        if len(check_files) == 1 and check_files[0] == "step1":
+            part_name = "step1"
+        elif "step1_a" in check_files and "step1_b" in check_files:
+            part_name = "step1_b" if part_name=="part7" else "step1_a"
+        else:
+            print("step 1 error......, no step1*.json files in %s"%(json_path))
+    ###########################################
 
     part_file = '%s/%s.json'%(json_path, part_name)
     part_data = []
@@ -87,20 +128,20 @@ def base_loader(part_name, json_path, center_dir, scale=100):
     part_dic = part_data["data"]
     holes = part_dic["hole"]
     holename = [x for x in sorted(holes.keys())]
-    if part_name == 'step1_a' or part_name == 'step1_b':
-        holename = sorted(holename)
+    if 'step1' in part_name:
+        holename1 = sorted([x for x in holename if 'C122620' not in x], key=lambda x:int(x.split('-')[1].split('_')[1]))
+        holename2 = sorted(sorted([x for x in holename if 'C122620' in x], key=lambda x:int(x.split('-')[1].split('_')[1])), key=lambda x:int(x.split('-')[0].split('_')[1]))
+        holename = holename1 + holename2
     else:
         holename = sorted(holename, key=lambda x:int(x.split('_')[1]))
+#    print(part_name, '::', ', '.join(holename)) # debug
     hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
     if part_name in center_data.keys():
         center_XYZ = center_data[part_name]
     else:
         print('No center data, ', part_name)
         center_XYZ = [0,0,0]
-#    if "CenterPointX" in part_dic.keys():
 #        center_XYZ = [part_dic["CenterPointX"], part_dic["CenterPointY"], part_dic["CenterPointZ"]]
-#    else:
-#        center_XYZ = [0,0,0]
     if "MinPointX" in part_dic.keys() and 'step' not in part_name:
         min_XYZ = [part_dic["MinPointX"], part_dic["MinPointY"], part_dic["MinPointZ"]]
     else:

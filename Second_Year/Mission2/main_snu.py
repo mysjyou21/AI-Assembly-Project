@@ -105,7 +105,6 @@ def main():
             save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
 
         if WAIT_SIGNAL:
-#            IKEA.rendering(step, list_added_obj, list_added_stl)
             IKEA.predict_pose(step)
             list_prev_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
             list_prev_obj = [os.path.basename(x) for x in list_prev_obj]
@@ -118,11 +117,11 @@ def main():
             if opt.hole_detection_on:
                 IKEA.msn2_hole_detector(step)
         else:
-            IKEA.msn2_hole_detector(step)
+            if opt.hole_detection_on:
+                IKEA.msn2_hole_detector(step)
         IKEA.group_as_action(step)
 
         print(IKEA.step_action)
-        # IKEA.write_csv_mission(step, option=0)
 
         # dictionary Info Backup per step
         backup_data = [IKEA.circles_loc, IKEA.circles_separated_loc, IKEA.rectangles_loc, IKEA.connectors_serial_imgs, \
@@ -141,7 +140,7 @@ def main():
         if opt.print_time:
             print('step time : {} min {} sec'.format(step_min, step_sec))
             print('total time : {} min {} sec'.format(total_min, total_sec))
-        if WAIT_SIGNAL and AUTO and step<9:
+        if WAIT_SIGNAL and AUTO and step<IKEA.num_steps:
             for p in new_cad_list[step-1]:
                 os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
 
