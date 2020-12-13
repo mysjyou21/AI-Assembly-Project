@@ -5,7 +5,7 @@ import os, glob
 # part7 = step1_b = part2 + C122620_3, C122620_4
 # part8 = step1_a = part3 + C122620_1, C122620_2
 
-def mid_loader(step_name, json_path, center_dir, scale=100):
+def mid_loader(step_name, json_path, center_dir, scale=100, used_parts=[]):
     """ input: step_name = 'step3'
         output: hole_XYZ(np array),
                 hole_dic={hole_name: [CenterX, CenterY, CenterZ]}
@@ -30,10 +30,14 @@ def mid_loader(step_name, json_path, center_dir, scale=100):
     # determine 'part7'(part7_exist=1) in id_list, 'part8'(part8_exist=1) in id_list
     part7_exist = 0
     part8_exist = 0
-    if 'part2_1' in id_list and len([x for x in id_list if 'C122620' in x])>0:
-        part7_exist = 1
-    if 'part3_1' in id_list and len([x for x in id_list if 'C122620' in x])>0:
-        part8_exist = 1
+    if len([x for x in id_list if 'C122620' in x])>0:
+        if 'part2_1' in id_list:
+            part7_exist = 1
+        if 'part3_1' in id_list:
+            part8_exist = 1
+        if not part7_exist and not part8_exist:
+            part7_exist = 1 if 7 in used_parts else 0
+            part8_exist = 1 if 8 in used_parts else 0
     if part7_exist and part8_exist:
         with open('%s/%s.json'%(json_path, 'step1_b'), 'r') as f:
             part7_data = json.load(f)['data']
@@ -82,22 +86,30 @@ def mid_loader(step_name, json_path, center_dir, scale=100):
     ###########################################
 
     part_hole_dic = {}
+    part_holename_dic = {}
     for id in id_list:
         idx = np.where(part_hole_idx == id)[0]
 #        print(id, ':', ','.join(list(map(holename.__getitem__, idx)))) # debug
         part_hole_XYZ = hole_XYZ[idx]
         part_hole_dic[id] = part_hole_XYZ
+        part_holename_dic[id] = list(map(holename.__getitem__, idx))
 
     if 'part7' in id_list:
-        assert 'part2' in id_list, "part7 has to contain holes with name part2_1-hole_#"
-        part_hole_dic['part7'] = np.concatenate([part_hole_dic['part2'], part_hole_dic['part7']])
-        del part_hole_dic['part2']
+#        assert 'part2' in id_list, "part7 has to contain holes with name part2_1-hole_#" - for cad_info, not for cad_info2
+        if 'part2' in part_hole_dic.keys():
+            part_hole_dic['part7'] = np.concatenate([part_hole_dic['part2'], part_hole_dic['part7']])
+            part_holename_dic['part7'] = part_holename_dic['part2'] + part_holename_dic['part7']
+            del part_hole_dic['part2']
+            del part_holename_dic['part2']
     if 'part8' in id_list:
-        assert 'part3' in id_list, "part8 has to contain holes with name part3_1-hole_#"
-        part_hole_dic['part8'] = np.concatenate([part_hole_dic['part3'], part_hole_dic['part8']])
-        del part_hole_dic['part3']
+#        assert 'part3' in id_list, "part8 has to contain holes with name part3_1-hole_#" - for cad_info, not for cad_info2
+        if 'part3' in part_hole_dic.keys():
+            part_hole_dic['part8'] = np.concatenate([part_hole_dic['part3'], part_hole_dic['part8']])
+            part_holename_dic['part8'] = part_holename_dic['part3'] + part_holename_dic['part8']
+            del part_hole_dic['part3']
+            del part_holename_dic['part3']
 
-    return part_hole_dic
+    return part_hole_dic, part_holename_dic
 
 
 def base_loader(part_name, json_path, center_dir, scale=100):
@@ -158,6 +170,6 @@ def base_loader(part_name, json_path, center_dir, scale=100):
     hole_XYZ = [hole_XYZ[i] for i in range(len(hole_XYZ))]
     hole_XYZ = np.stack(hole_XYZ)
 
-    return hole_XYZ
+    return hole_XYZ, holename
 
 

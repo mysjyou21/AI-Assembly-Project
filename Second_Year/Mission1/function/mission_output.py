@@ -6,6 +6,7 @@ import csv, json
 from collections import OrderedDict
 import itertools
 import shutil
+from copy import deepcopy
 
 # 은지
 
@@ -93,73 +94,7 @@ def serial_number_to_index(num_dic_filename, OCR_serial_result, OCR_mult_result)
 
     return OCR_serial_index, OCR_mult_result_mod
 
-def write_csv_mission(actions, cut_path, step_path, csv_dir):
-    """ write contents in actions, in .csv format
-        actions: [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]"""
-
-    filename = cut_path.split('/')[-2]
-    if not os.path.exists(csv_dir):
-        os.makedirs(csv_dir)
-
-    f = open(os.path.join(csv_dir, 'mission_%s.csv' % step_path), 'w', newline='') #encoding='utf-8'
-    cut_names = sorted(glob.glob(os.path.join(cut_path, '*.png')))
-    csv_writer = csv.writer(f)
-#    csv_writer.writerow(['File_name', 'Label_step_number', 'Label_part_1_1', 'theta', 'phi', 'alpha', '#',
-#                         'Label_part_1_2', 'theta', 'phi', 'alpha', '#', 'Label_part_1_3', 'theta', 'phi', 'alpha', '#',
-#                         'Label_part_1_4', 'theta', 'phi', 'alpha', '#', 'Label_part_2_1', 'theta', 'phi', 'alpha', '#',
-#                         'Label_part_2_2', 'theta', 'phi', 'alpha', '#', 'part_vertical_relation_1', 'part_vertical_relation_2',
-#                         '#', 'Label_action_1', '#', 'Label_action_2', '#', 'Label_connector_1', '#', 'Label_connector_2'])
-    csv_writer.writerow(['File_name', 'Label_step_number', 'Label_part_1', 'theta', 'phi', 'alpha', 'additional', '#', 'hole',
-                         'Label_part_2', 'theta', 'phi', 'alpha', 'additional', '#', 'hole',
-                         'Label_part_3', 'theta', 'phi', 'alpha', 'additional', '#', 'hole',
-                         'Label_part_4', 'theta', 'phi', 'alpha', 'additional', '#', 'hole',
-                         'Label_action', '#', 'Label_connector', '#'])# 1
-    for action in actions:
-        write_list = [filename, step_path]
-        # part
-        for i in range(0,4):
-            part = action[i]
-            if part[0]!='':
-                part_loc = part[0] # [x,y,w,h]
-                part_id = part[1] # 'string'
-                part_pose = part[2] # [theta,phi,alpha]
-                part_holes = part[3]
-                write_list.append(part_id)
-                write_list += part_pose
-                write_list.append('1') # part num, default 1
-                hole_string = ''
-                for part_hole in part_holes:
-                    hole_string += part_hole[0]+','
-                hole_string = hole_string[0:-1]
-                write_list.append(hole_string)
-            else:
-                write_list += ['', '', '', '', '', '', '']
-
-#        write_list.append('part1up#part2down') # part_vertical_relation
-#        try:
-        action_lab = action[6]
-#        except:
-#            action_lab = 'A005'
-        write_list.append(action_lab)
-        mults = action[5]
-        if len(mults)==0:
-            mults=['']
-        write_list.append(mults[0])
-        serials = action[4]
-        if len(serials)==0:
-            serials=['']
-        write_list.append(serials[0])
-        write_list.append(mults[0])
-#        for i in range(0,2):
-#            if i<len(serials):
-#                write_list.append(serials[i])
-#                write_list.append(mults[i])
-#            else:
-#                write_list.append('')
-#                write_list.append('')
-        csv_writer.writerow(write_list)
-
-def write_json_mission(actions, cut_path, step_path, output_dir):
+def write_json_mission(actions_result, cut_path, step_path, output_dir):
     """ write contents in actions, in json format
         actions: [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]"""
 
@@ -172,6 +107,18 @@ def write_json_mission(actions, cut_path, step_path, output_dir):
     step_dic = OrderedDict()
     step_dic['File_name'] = filename
     step_dic['Label_step_number'] = step_path
+    # assure 'part3' is ahead of 'part2'
+    revert = 0
+    if len(actions_result)==2:
+        check_part32 = [actions_result[0][0][1], actions_result[1][0][1]]
+        if 'part3' in check_part32 and 'part2' in check_part32:
+            if check_part32[1]=='part3':
+                actions = []
+                actions.append(deepcopy(actions_result[1]))
+                actions.append(deepcopy(actions_result[0]))
+                revert = 1
+    if not revert:
+        actions = actions_result
 
     for act_i in range(len(actions)):
         action = actions[act_i]

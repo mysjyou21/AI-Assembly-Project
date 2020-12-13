@@ -155,7 +155,7 @@ def non_max_suppression_fast(boxes, probs, overlap_thresh=0.9, max_boxes=300):
 	# code used from here: http://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
 	# if there are no boxes, return an empty list
 	if len(boxes) == 0:
-		return []
+		return [], []
 
 	# grab the coordinates of the bounding boxes
 	x1 = boxes[:, 0]

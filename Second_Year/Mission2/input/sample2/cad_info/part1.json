@@ -16,14 +16,6 @@
         "MaxPointZ": "10",
         "hole": {
             "hole_1": {
-                "CenterX": "138.71",
-                "CenterY": "370.77",
-                "CenterZ": "5",
-                "NormalX": "0",
-                "NormalY": "0",
-                "NormalZ": "1"
-            },
-            "hole_2": {
                 "CenterX": "296.71",
                 "CenterY": "370.77",
                 "CenterZ": "5",
@@ -31,8 +23,16 @@
                 "NormalY": "0",
                 "NormalZ": "1"
             },
+            "hole_2": {
+                "CenterX": "138.71",
+                "CenterY": "370.77",
+                "CenterZ": "5",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1"
+            },
             "hole_3": {
-                "CenterX": "106.71",
+                "CenterX": "328.71",
                 "CenterY": "43.39",
                 "CenterZ": "5",
                 "NormalX": "0",
@@ -40,13 +40,13 @@
                 "NormalZ": "1"
             },
             "hole_4": {
-                "CenterX": "328.71",
+                "CenterX": "106.71",
                 "CenterY": "43.39",
                 "CenterZ": "5",
                 "NormalX": "0",
                 "NormalY": "0",
                 "NormalZ": "1"
-            }
+            }            
         }
     }
 }

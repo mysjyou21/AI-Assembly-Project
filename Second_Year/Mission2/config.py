@@ -39,6 +39,9 @@ def parse_args(description='Robot'):
     parser.add_argument('--mid_RT_on', type=str2bool, default=True)
     parser.add_argument('--hole_detection_on', type=str2bool, default=True)
 
+    ############# temp ###########
+    parser.add_argument('--temp', type=str2bool, default=False)
+    ###############################
     parser.add_argument('--blender', default='blender')
 
     parser.add_argument('--step_num', default=False, type=int)
@@ -104,6 +107,10 @@ def init_args(description='Robot'):
     opt.save_part_id_pose = str2bool(opt.save_part_id_pose)
     opt.mid_RT_on = str2bool(opt.mid_RT_on)
     opt.hole_detection_on = str2bool(opt.hole_detection_on)
+
+    ####### Temp ########
+    opt.temp = str2bool(opt.temp)
+    #####################
 
     return opt
 

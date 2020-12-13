@@ -280,12 +280,6 @@ class Assembly():
         self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
         self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
 
-        # temp settings
-        if self.opt.assembly_name == 'stefan':
-            if step_num == 2:
-                if self.opt.temp_settings:
-                    self.parts_info[step_num] = ['part8', 'part6']
-
 
     def component_detector(self, step_num):  # 준형
         """ Detect the components in the step image, return the detected components' locations (x, y, w, h, group_index)
@@ -293,7 +287,11 @@ class Assembly():
         step_img = self.steps[step_num]
 
         components_dict1 = self.detect_model1.test_for_components(step_img)
-        components_dict2 = self.detect_model2.test_for_parts(step_img)
+        if self.opt.temp:
+            components_dict2 = self.detect_model2.test_for_parts(step_img, step_num)  # temp
+        else:
+            components_dict2 = self.detect_model2.test_for_parts(step_img)            # temp
+
         # print(components_dict1)
         # print(components_dict2)
         circles = components_dict1['Guidance_Circle']
@@ -598,6 +596,8 @@ class Assembly():
         step_dic['File_name'] = filename
         step_dic['Label_step_number'] = str(step_num)
 
+        # import ipdb; ipdb.set_trace()
+
         ######## 1. mapping action ##############
         if self.is_merged[step_num] == True:  ## exception_case
             for act_i in range(len(self.step_action['action'])):
@@ -672,6 +672,11 @@ class Assembly():
                         temp = copy.deepcopy(step_part)
                         step_part[0] = temp[1]
                         step_part[1] = temp[0]
+                    step_part[0][0] = 'step1_a'
+                    step_part[1][0] = 'step1_b'
+
+                if step_num==1 and self.step_action['parts#']==1 and step_part[0][0] in ['part2', 'part3']:
+                    step_part[0][0] = 'step1'
 
                 for act_i in range(len(step_part) - 1):
                     action_dic = OrderedDict()
@@ -685,8 +690,6 @@ class Assembly():
                             part = ['', '', '']
                         if part[0] != '':
                             part_id = part[0]  # 'string'
-                            if part_id == 'part7': part_id = 'step1_b'
-                            if part_id == 'part8': part_id = 'step1_a'
                             part_pose_ind = part[1]
                             part_pose_lab = pose_dic[str(part_pose_ind)]
                             part[1] = part_pose_lab.split('_')
@@ -733,8 +736,14 @@ class Assembly():
                             part = ['', '', '']
                         if part[0] != '':
                             part_id = part[0]  # 'string'
-                            if part_id == 'part7': part_id = 'step1_b'
-                            if part_id == 'part8': part_id = 'step1_a'
+                            if part_id == 'part7':
+                                if step_num==2 and self.used_parts[1]==[2] : part_id = 'step1'
+                                else: part_id = 'step1_b'
+                            if part_id == 'part8':
+                                if step_num == 2 and self.used_parts[1] == [3]:
+                                    part_id = 'step1'
+                                else:
+                                    part_id = 'step1_a'
                             part_pose_ind = part[1]
                             part_pose_lab = pose_dic[str(part_pose_ind)]
                             part[1] = part_pose_lab.split('_')
@@ -848,13 +857,13 @@ class Assembly():
 
         base_hole_dict = {}
         for i, id in enumerate(base_id_list):
-            base_hole_XYZ = base_loader(id, self.opt.hole_path, self.opt.cad_path)
+            base_hole_XYZ, _ = base_loader(id, self.opt.hole_path, self.opt.cad_path)
             base_RT = base_RT_list[i]
             base_hole_dict[id] = transform_hole(base_RT, base_hole_XYZ)
 
 
         ######## 중간산출물 hole 위치 loading  ##########
-        mid_hole_dict = mid_loader('step%i'%(step_num-1), self.opt.hole_path, self.opt.cad_path)
+        mid_hole_dict, _ = mid_loader('step%i'%(step_num-1), self.opt.hole_path, self.opt.cad_path)
 
         mid_RT, mid_id_list, find_mid = baseRT_to_midRT(base_hole_dict, mid_hole_dict)
 
@@ -936,7 +945,7 @@ class Assembly():
             hole_pairs = self.hole_pairs
 
             parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid)
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, used_parts=self.used_parts[step_num-1])
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs

@@ -1,22 +1,25 @@
 import os, glob
+import sys
 import cv2
 import json
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy import ndimage
+sys.path.append(os.path.join((os.path.dirname(os.path.abspath(os.path.dirname(__file__)))),'Grouping_mid'))
+from hole_loader import *
 
 class MSN2_hole_detector():
     def __init__(self, opt):
         self.opt = opt
 
         ###################### sample2/cad_info2 바뀌면 바꾸어야함 ############################
-        if self.opt.assembly_name == 'sample2':
-            self.opt.hole_path_2 = self.opt.hole_path
+       # if self.opt.assembly_name == 'sample2' or self.opt.assembly_name == 'sample2_test':
+       #     self.opt.hole_path_2 = self.opt.hole_path
         ######################################################################################
 
     def main_hole_detector(self, step_num, step_images, parts_info, connectors, mults, \
-        mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid=False):
+        mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid=False, used_parts=[]):
         self.step_num = step_num
         self.parts_info = parts_info
         self.connectors = connectors
@@ -71,7 +74,7 @@ class MSN2_hole_detector():
 
         self.new_id_list = [x for x in part_id_list if x not in self.mid_id_list]
         fastenerInfo_list = self.fastener_loader(self.cut_image.copy(), component_list)
-        part_holename_dict, part_holeInfo_dict = self.part_hole_connector_loader(step_num, part_id_list, part_RT_list, K, H, W, True, self.cut_image.copy())
+        part_holename_dict, part_holeInfo_dict = self.part_hole_connector_loader(step_num, part_id_list, part_RT_list, K, H, W, True, self.cut_image.copy(), used_parts=used_parts)
         for part_id, part_holeInfo in part_holeInfo_dict.items():
             part_holeInfo_temp_ = part_holeInfo_dict[part_id].copy()
             part_holeInfo_temp = [x for x in part_holeInfo_temp_ if connector in x]
@@ -87,7 +90,7 @@ class MSN2_hole_detector():
             self.mid_RT = [x[1] for x in self.parts_info[step_num] if 'part8' in x][0]
 
         # if len(self.new_id_list)!=0 and len(self.mid_id_list)!=0 and self.connector != '101350':
-        #     self.hole_pair_matching(step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())    
+        #     self.hole_pair_matching(step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
         # elif len(self.new_id_list)!=0 and len(self.mid_id_list)!=0 and self.connector == '101350':
         #     import ipdb; ipdb.set_trace()
         #     connector_num = int(connector_num/2)
@@ -181,20 +184,45 @@ class MSN2_hole_detector():
 
         return fastenerInfo_list
 
-    def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H, W, debug_mode=False, debug_img=None):
+    def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H, W, debug_mode=False, debug_img=None, used_parts=[]):
         part_holeInfo_dict = {}
         part_holename_dict = {}
         step_name = 'step' + str(step_num-1)
         for part_idx, part_id in enumerate(part_id_list):
             if part_id in self.mid_id_list:
-                holename, hole_id, hole_XYZ = self.mid_loader_part_hole(step_name, part_id, self.opt.hole_path_2, self.opt.cad_path, 100)
-            else:
-                holename, hole_id, hole_XYZ = self.base_loader(part_id, self.opt.hole_path_2, self.opt.cad_path, 100)
+                hole_XYZ, holename = mid_loader('step%i'%(step_num-1), self.opt.hole_path_2, self.opt.cad_path, used_parts=used_parts)
+                try:
+                    hole_XYZ = hole_XYZ[part_id]
+                    holename = holename[part_id]
+                    if part_id == 'part7' or part_id == 'part8':
+                        real_used_idx = [holename.index(x) for x in holename if ('C122620' not in x) or (('C122620' in x) and ('hole_1' in x))]
+                        hole_XYZ = hole_XYZ[real_used_idx,:]
+                        holename = [holename[i] for i in real_used_idx]
+                        hole_id1 = [int(x.split('_')[-1]) for x in holename if 'C122620' not in x]
+                        hole_id2 = list(range(7,7+len([x for x in holename if 'C122620' in x])))
+                        hole_id = hole_id1 + hole_id2
+                    else:
+                        hole_id = [int(x.split("_")[-1]) for x in holename]
+                except KeyError:
+                    holename = []
+                    hole_id = [-1]
+                    hole_XYZ = np.array([[0.0,0.0,0.0]])
 
+            else:
+                hole_XYZ, holename = base_loader(part_id, self.opt.hole_path_2, self.opt.cad_path)
+                if part_id == 'part7' or part_id == 'part8':
+                    real_used_idx = [holename.index(x) for x in holename if ('C122620' not in x) or (('C122620' in x) and ('hole_1' in x))]
+                    hole_XYZ = hole_XYZ[real_used_idx,:]
+                    holename = [holename[i] for i in real_used_idx]
+                    hole_id1 = [int(x.split('_')[-1]) for x in holename if 'C122620' not in x]
+                    hole_id2 = list(range(7,7+len([x for x in holename if 'C122620' in x])))
+                    hole_id = hole_id1 + hole_id2
+                else:
+                    hole_id = [int(x.split("_")[-1]) for x in holename]
             RT = part_RT_list[part_idx]
             hole_x, hole_y = self.project_points(
                 hole_XYZ, K, RT, H, W)
-                
+
             idx = 0
             holeInfo_list = list()
             for xh, yh in zip(hole_x, hole_y):
@@ -240,7 +268,7 @@ class MSN2_hole_detector():
                     holeInfo = holeInfo_list[0]
                     holeInfo.append('-1')
                     new_holeInfo_list.append(holeInfo.copy())
-                else:  
+                else:
                     holeInfo = [x for x in holeInfo_list if hole_id == x[0]][0]
                     # holeInfo.append('122925')
                     holeInfo.append('-1')
@@ -336,7 +364,7 @@ class MSN2_hole_detector():
         return dist
 
     def calculate_dist_point(self, fastenerInfo, p_hole):
-        
+
         fastener_x = fastenerInfo[2][0]
         fastener_y_down = fastenerInfo[2][1]
 
@@ -347,127 +375,6 @@ class MSN2_hole_detector():
 
         return dist
 
-    def base_loader(self, part_name, json_path, center_dir, scale=100):
-        """ input: part_name = 'part3'
-        output: hole_XYZ(np array), #norm_XYZ(np array),
-                hole_dic={hole_name: [CenterX, CenterY, CenterZ]} #, NormalX, NormalY, NormalZ]}
-                hole_name: 'part2_1-hole_3' """
-        ############# TO DEAL WITH PART7, PART8###
-        if part_name == "part7" or part_name == "part8":
-            check_files = [os.path.basename(x).replace('.json','') for x in glob.glob('%s/step1*.json'%(json_path))]
-            if len(check_files) == 1 and check_files[0] == "step1":
-                part_name = "step1"
-            elif "step1_a" in check_files and "step1_b" in check_files:
-                part_name = "step1_b" if part_name=="part7" else "step1_a"
-            else:
-                print("step 1 error......, no step1*.json files in %s"%(json_path))
-
-        part_file = '%s/%s.json'%(json_path, part_name)
-        part_data = []
-        with open(part_file, 'r') as f:
-            part_data = json.load(f)
-        with open(os.path.join(center_dir, 'center.json'), 'r') as f:
-            center_data = json.load(f)
-        with open(os.path.join(center_dir, 'obj_min.json'), 'r') as f: # to correct global coordinates of our obj files
-            min_data = json.load(f)
-
-        part_dic = part_data["data"]
-        holes = part_dic["hole"]
-        holename = [x for x in sorted(holes.keys())]
-
-        if 'step1' in part_name:
-            holename1 = sorted([x for x in holename if 'C122620' not in x], key=lambda x:int(x.split('-')[1].split('_')[1]))
-            holename2 = sorted(sorted([x for x in holename if ('C122620' in x) and ('hole_1' in x)], key=lambda x:int(x.split('-')[1].split('_')[1])), key=lambda x:int(x.split('-')[0].split('_')[1]))
-            holename = holename1 + holename2
-            hole_id = list(range(1,len(holename)+1))
-        else:
-            holename = sorted(holename, key=lambda x:int(x.split('_')[1]))
-            hole_id = list(range(1,len(holename)+1))
-
-        hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
-        if part_name in center_data.keys():
-            center_XYZ = center_data[part_name]
-        else:
-            print('No center data, ', part_name)
-            center_XYZ = [0,0,0]
-
-        if "MinPointX" in part_dic.keys() and 'step' not in part_name:
-            min_XYZ = [part_dic["MinPointX"], part_dic["MinPointY"], part_dic["MinPointZ"]]
-        else:
-            min_XYZ = [0,0,0]
-
-        center_XYZ = np.array(list(map(float, center_XYZ)))/scale
-        min_XYZ = np.array(list(map(float, min_XYZ)))/scale
-
-        if 'step' not in part_name:
-            min_blender_XYZ = np.array(min_data[part_name])/scale
-            min_XYZ = min_XYZ - min_blender_XYZ
-            
-        hole_XYZ = [np.array(list(map(float, temp)))/scale - center_XYZ - min_XYZ for temp in hole_XYZ]
-
-        hole_XYZ = [hole_XYZ[i] for i in range(len(hole_XYZ))]
-        hole_XYZ = np.stack(hole_XYZ)
-        return holename, hole_id, hole_XYZ
-
-    def mid_loader_part_hole(self, step_name, part_id, json_path, center_dir, scale=100):
-        """ input: step_name = 'step3'
-        output: hole_XYZ(np array),
-                hole_dic={hole_name: [CenterX, CenterY, CenterZ]}
-                hole_name: 'part2_1-hole_3' """
-        hole_id = []
-        part_file = '%s/%s.json'%(json_path, step_name)
-        part_data = []
-        with open(part_file, 'r') as f:
-            part_data = json.load(f)
-        with open(os.path.join(center_dir, 'center.json'), 'r') as f:
-            center_data = json.load(f)
-        
-        part_dic = part_data["data"]
-        holes = part_dic["hole"]
-
-        if part_id == 'part7':
-            holename = [x for x in sorted(holes.keys()) if ('part2' in x) or ('C122620_3' in x) or ('C122620_4' in x)]
-            holename1 = sorted([x for x in holename if 'C122620' not in x], key=lambda x: int(x.split('-')[1].split('_')[1]))
-            holename2 = sorted([x for x in holename if ('C122620' in x) and ('hole_1' in x)])
-            holename = holename1 + holename2
-            hole_id1 = [int(x.split('_')[-1]) for x in holename1]
-            hole_id2 = [7,8]
-            hole_id = hole_id1 + hole_id2
-            hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
-        elif part_id == 'part8':
-            holename = [x for x in sorted(holes.keys()) if ('part3' in x) or ('C122620_1' in x) or ('C122620_2' in x)]
-            holename1 = sorted([x for x in holename if 'C122620' not in x], key=lambda x: int(x.split('-')[1].split('_')[1]))
-            holename2 = sorted([x for x in holename if ('C122620' in x) and ('hole_1' in x)])
-            holename = holename1 + holename2
-            hole_id1 = [int(x.split('_')[-1]) for x in holename1]
-            hole_id2 = [7,8]
-            hole_id = hole_id1 + hole_id2
-            hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
-        else:
-            holename = [x for x in sorted(holes.keys()) if part_id in x]
-            holename = sorted([x for x in holename], key=lambda x: int(x.split('-')[1].split('_')[1]))
-            hole_id = [int(x.split('_')[-1]) for x in holename]
-            hole_XYZ = [[holes[k]["CenterX"], holes[k]["CenterY"], holes[k]["CenterZ"]] for k in holename]
-
-        if step_name in center_data.keys():
-            center_XYZ = center_data[step_name]
-        else:
-            print('No center data, ', step_name)
-            center_XYZ = [0,0,0]
-        min_XYZ = [0,0,0]
-
-        center_XYZ = np.array(list(map(float, center_XYZ)))/scale
-        min_XYZ = np.array(list(map(float, min_XYZ)))/scale
-        hole_XYZ = [np.array(list(map(float, temp)))/scale - center_XYZ - min_XYZ for temp in hole_XYZ]
-
-        hole_XYZ = [hole_XYZ[i] for i in range(len(hole_XYZ))]
-        try:
-            hole_XYZ = np.stack(hole_XYZ)
-        except ValueError:
-            hole_id = [-1]
-            hole_XYZ = np.array([[0.0,0.0,0.0]])
-
-        return holename, hole_id, hole_XYZ
 
     def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, cut_image=None):
         fastener_connectingInfo = {}
@@ -522,7 +429,7 @@ class MSN2_hole_detector():
 
         hole_matching_info_list = hole_matching_info_list[:connector_num]
         connected_fastener_list = fastener_id_list[:connector_num]
-        
+
         ######## Visualization ###########
         inv_img = cut_image.copy()
         for idx in range(len(connected_fastener_list)):
@@ -533,7 +440,7 @@ class MSN2_hole_detector():
             fastener_coord1 = connected_fastenerInfo[1]
             fastener_coord2 = connected_fastenerInfo[2]
             fastener_coord_list = [fastener_coord1, fastener_coord2]
-            
+
             inv_img = cv2.line(inv_img, fastener_coord1, fastener_coord2, (0,255,0), 2)
 
             hole_coord_list = list()
@@ -564,17 +471,16 @@ class MSN2_hole_detector():
                 if part_name == 'part7':
                     if hole_idx < 7:
                         part_hole_rename = (part_name,[x for x in part_holename_list if (hole_idx == int(x.split('_')[-1])) and ('C122620' not in x)][0])
-                    elif hole_idx == 7:
-                        part_hole_rename = (part_name,[x for x in part_holename_list if ('C122620_3' in x) or ('C122620_4' in x)][0])
                     else:
-                        part_hole_rename = (part_name,[x for x in part_holename_list if ('C122620_3' in x) or ('C122620_4' in x)][1])
+                        hole_idx -= 7
+                        part_hole_rename = (part_name,[x for x in part_holename_list if 'C122620' in x][hole_idx])
+
                 elif part_name == 'part8':
                     if hole_idx < 7:
                         part_hole_rename = (part_name,[x for x in part_holename_list if (hole_idx == int(x.split('_')[-1])) and ('C122620' not in x)][0])
-                    elif hole_idx == 7:
-                        part_hole_rename = (part_name,[x for x in part_holename_list if ('C122620_1' in x) or ('C122620_2' in x)][0])
                     else:
-                        part_hole_rename = (part_name,[x for x in part_holename_list if ('C122620_1' in x) or ('C122620_2' in x)][1])
+                        hole_idx -= 7
+                        part_hole_rename = (part_name,[x for x in part_holename_list if 'C122620' in x][hole_idx])
                 elif part_name in self.mid_id_list:
                     part_hole_rename = (part_name,[x for x in part_holename_list if hole_idx == int(x.split('_')[-1])][0])
                 else:
@@ -605,7 +511,7 @@ class MSN2_hole_detector():
             if (mid_name == 'part8') and self.connector == '101350':
                 check_pass = True
                 mid_part_holeInfo = part_holeInfo_dict[mid_name]
-                mid_part_holeId_list = [x[0] for x in mid_part_holeInfo] 
+                mid_part_holeId_list = [x[0] for x in mid_part_holeInfo]
                 mid_part_holenames = part_holename_dict[mid_name]
                 mid_used_hole = [mid_part_holenames[i-1] for i in mid_part_holeId_list]
 
@@ -629,13 +535,13 @@ class MSN2_hole_detector():
             if self.opt.mission1: ############# STEFAN Tuning ##################
                 if not check_pass:
                     new_part_holeInfo = part_holeInfo_dict[new_part_id]
-                    new_part_holeId_list = [x[0] for x in new_part_holeInfo] 
+                    new_part_holeId_list = [x[0] for x in new_part_holeInfo]
                     new_part_holenames = part_holename_dict[new_part_id]
                     if new_part_id == "part7" or new_part_id == "part8":
                         new_part_used_hole = [new_part_holenames[i-1] for i in new_part_holeId_list]
                     else:
                         new_part_used_hole = [new_part_id+'_1-'+new_part_holenames[i-1] for i in new_part_holeId_list]
-            
+
             new_parts_info_list.append([new_part_id, new_part_RT_class, new_part_used_hole])
             connectivity = mid_name + '#' + new_part_id
 
@@ -668,7 +574,7 @@ class MSN2_hole_detector():
                     distInfo = [dist, (part, part_hole_id)]
                     dist_list.append(dist)
                     distInfo_list.append(distInfo)
-                
+
             min_idx = dist_list.index(min(dist_list))
             min_distInfo = distInfo_list[min_idx]
             assert min(dist_list) == min_distInfo[0]
@@ -687,7 +593,7 @@ class MSN2_hole_detector():
         for fastener_idx in fastener_idxs:
             addition = True
             hole_matching_info_raw = fastener_connectingInfo[fastener_idx]
-            
+
             part_hole = hole_matching_info_raw[1]
             if len(hole_matching_info_list) != 0:
                 for holes in hole_matching_info_list:
@@ -722,9 +628,9 @@ class MSN2_hole_detector():
             hole_coord = (h_x, h_y)
             self.cut_image = cv2.circle(self.cut_image, hole_coord, 4, (0,0,255), -1)
             self.cut_image = cv2.line(self.cut_image, fastener_coord, hole_coord, (255,0,0), 1)
-        cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), self.cut_image) 
+        cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), self.cut_image)
 
-       
+
         ###################################
         connectivity = ''
         self.hole_pairs[step_num] = []
@@ -742,17 +648,16 @@ class MSN2_hole_detector():
                         if mid_id == 'part7':
                             if mid_id_hole_idx < 7:
                                 mid_used_hole += [x for x in mid_id_hole_list if (mid_id_hole_idx == int(x.split('_')[-1])) and ('C122620' not in x)]
-                            elif mid_id_hole_idx == 7:
-                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620_3' in x) or ('C122620_4' in x)][0]]
                             else:
-                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620_3' in x) or ('C122620_4' in x)][1]]
+                                mid_id_hole_idx -= 7
+                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620' in x)][mid_id_hole_idx]]
+
                         elif mid_id == 'part8':
                             if mid_id_hole_idx < 7:
                                 mid_used_hole += [x for x in mid_id_hole_list if (mid_id_hole_idx == int(x.split('_')[-1])) and ('C122620' not in x)]
-                            elif mid_id_hole_idx == 7:
-                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620_1' in x) or ('C122620_2' in x)][0]]
                             else:
-                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620_1' in x) or ('C122620_2' in x)][1]]
+                                mid_id_hole_idx -= 7
+                                mid_used_hole += [[x for x in mid_id_hole_list if ('C122620' in x)][mid_id_hole_idx]]
                         else:
                             mid_used_hole += [x for x in mid_id_hole_list if (mid_id_hole_idx == int(x.split('_')[-1]))]
                 else:
@@ -775,7 +680,7 @@ class MSN2_hole_detector():
                 new_part_used_hole = [new_part_id + '_1-' + new_part_hole_list[i-1] for i in new_part_hole_idx]
                 new_parts_info_list.append([new_part_id, new_part_RT_class, new_part_used_hole].copy())
             step_info = new_parts_info_list + [connectivity]
-                
+
         self.parts_info[step_num] = step_info
         print(step_info)
 

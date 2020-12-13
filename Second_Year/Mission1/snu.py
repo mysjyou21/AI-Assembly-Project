@@ -86,67 +86,12 @@ def main():
                 csock.send((message).encode())
                 print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
 
-#            elif "check_cad_file" in commend.decode('utf-8'):
-#                start_step_num_temp = int(commend.decode('utf-8').split('#')[-3])
-#                restoration = int(commend.decode('utf-8').split('#')[-2])
-#                add_cad = int(commend.decode('utf-8').split('#')[-1])
-#                step = start_step_num_temp
-#                if is_start:
-#                    print_message = 'start step %d' % start_step_num_temp
-#                else:
-#                    print_message = 'step %d' % start_step_num_temp
-#                print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] SNU status checks-CAD_file,"+print_message+bcolors.CEND)
-#                ########## 이전 정보 불러오기
-#                if start_step_num_temp != 1 and restoration:
-#                    # Restore Information of prior step
-#                    pickle_read_filepath =  opt.cad_path + '/' + str(step-1) + '/info_dict_'+ str(step-1) + '.pickle'
-#                    with open(pickle_read_filepath,'rb') as f:
-#                        pickle_data = pickle.load(f)
-#
-#                    print("{} Step Information Restored".format(step-1))
-#
-#                    IKEA.circles_loc = pickle_data['circles_loc']
-#                    IKEA.circles_separated_loc = pickle_data['circles_separated_loc']
-#                    IKEA.rectangles_loc = pickle_data['rectangles_loc']
-#                    IKEA.connectors_serial_imgs = pickle_data['connectors_serial_imgs']
-#                    IKEA.connectors_serial_loc = pickle_data['connectors_serial_loc']
-#                    IKEA.connectors_mult_imgs = pickle_data['connectors_mult_imgs']
-#                    IKEA.connectors_mult_loc = pickle_data['connectors_mult_loc']
-#                    IKEA.connectors_loc = pickle_data['connectors_loc']
-#                    IKEA.parts_loc = pickle_data['parts_loc']
-#                    IKEA.tools_loc = pickle_data['tools_loc']
-#                    IKEA.is_merged = pickle_data['is_merged']
-#                    IKEA.is_tool = pickle_data['is_tool']
-#                    IKEA.connectors_serial_OCR = pickle_data['connectors_serial_OCR']
-#                    IKEA.connectors_mult_OCR = pickle_data['connectors_mult_OCR']
-#                    IKEA.parts = pickle_data['parts']
-#                    IKEA.parts_info = pickle_data['parts_info']
-#                    IKEA.cad_models = pickle_data['cad_models']
-#                    IKEA.candidate_classes = pickle_data['candidate_classes']
-#                    IKEA.actions = pickle_data['actions']
-#                    IKEA.step_action = pickle_data['step_action']
-#
-#                    if add_cad:
-#                        print("Need to add Mid from the prior step")
-#                        list_prev_obj = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.obj')))
-#                        list_prev_obj = [os.path.basename(x) for x in list_prev_obj]
-#                        list_prev_stl = sorted(glob.glob(os.path.join(IKEA.opt.cad_path, '*.STL')))
-#                        list_prev_stl = [os.path.basename(x) for x in list_prev_stl]
-#                        add_cad = 0
-#
-#                print(bcolors.CBLUE2+'\n\n(step {}) CAD Rendering\n'.format(step)+bcolors.CEND)
-#
-#                IKEA.rendering(step, list_added_obj, list_added_stl)
-#                csock.send(("msg_success").encode())
-#                print(bcolors.CBLUE2+bcolors.CBOLD+"\n[SNU] Wait main program request"+bcolors.CEND)
-#                is_start = 0
-
             elif "request_recognize_info" in commend.decode('utf-8'):
                 # kitech planner가 서울대에게 인식 정보를 요청하면서 서울대의 ./input/stefan/ 폴더에 중간산출물을 ./input/stefan/cad_info와 ./input/stefan/cad_info2에 이전 스탭에서 생성한 중간산출물 정보를 넣어줌.
                 print(bcolors.CGREEN2+bcolors.CBOLD+"[main program] Request recognize info"+bcolors.CEND)
                 commend_decode = commend.decode('utf-8')
                 if len(commend_decode.split('#'))==0:
-                    start_step_num_temp = 2
+                    start_step_num_temp = step
                     restoration = 0
                     add_cad = 0
                     step = start_step_num_temp

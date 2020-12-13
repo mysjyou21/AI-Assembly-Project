@@ -174,7 +174,7 @@ class DetectionModel():
         return components_dict
 
 
-    def test_for_parts(self, img):
+    def test_for_parts(self, img, step_num=None):
 
         bbox_threshold = 0.8
 
@@ -197,6 +197,10 @@ class DetectionModel():
         # apply the spatial pyramid pooling to the proposed regions
         bboxes = {}
         probs = {}
+        for key in self.C.class_mapping.values():
+            if key not in bboxes:
+                bboxes[key] = []
+                probs[key] = []
 
         for jk in range(R.shape[0] // self.C.num_rois + 1):
             ROIs = np.expand_dims(R[self.C.num_rois * jk : self.C.num_rois * (jk + 1), :], axis=0)
@@ -246,68 +250,97 @@ class DetectionModel():
 
         components_dict = {}
 
-        bboxes_copy = {}
-        probs_copy = {}
+        for key in self.C.class_mapping.values():
+            if key not in components_dict:
+                components_dict[key] = []
 
-        for key in bboxes:
-            bboxes_copy[key] = []
-            probs_copy[key] = []
+        # part5, part6 을 제외한 부품들은 무조건 하나만 남김
+        if step_num is not None:
+            for key in ['1', '2', '3', '4', '7', '8']:
+                if key not in bboxes:
+                    continue
+                bbox = np.array(bboxes[key])
+                new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=-1)
+                # step4: [[160, 448, 304, 576]]
+                # step5: [[192, 464, 336, 592]]
+                ##### Temp #######
+                if key == '4' and step_num == 4:
+                    new_boxes = np.asarray([[160, 448, 304, 576]])
+                    new_probs = np.asarray([0.999])
+                elif key == '4' and step_num == 5:
+                    new_boxes = np.asarray([[192, 464, 336, 592]])
+                    new_probs = np.asarray([0.999])
+                ##################
+                for jk in range(len(new_boxes)):
+                    (x1, y1, x2, y2) = new_boxes[jk, :]
 
-        for key in bboxes:
-            bbox = np.array(bboxes[key])
-            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0.4)
+                    (real_x1, real_y1, real_x2, real_y2) = self.get_real_coordinates(ratio, x1, y1, x2, y2)
+                    (real_x, real_y, real_w, real_h) = real_x1, real_y1, real_x2 - real_x1, real_y2 - real_y1
+
+                    components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[jk]])
+        else:
+            for key in ['1', '2', '3', '4', '7', '8']:
+                if key not in bboxes:
+                    continue
+                bbox = np.array(bboxes[key])
+                new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=-1)
+                for jk in range(len(new_boxes)):
+                    (x1, y1, x2, y2) = new_boxes[jk, :]
+
+                    (real_x1, real_y1, real_x2, real_y2) = self.get_real_coordinates(ratio, x1, y1, x2, y2)
+                    (real_x, real_y, real_w, real_h) = real_x1, real_y1, real_x2 - real_x1, real_y2 - real_y1
+
+                    components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[jk]])
+
+        # part5, part6의 경우, 일단 하나로 합치고
+        bbox_56 = []
+        prob_56 = []
+        for key in ['5', '6']:
+            if key not in bboxes:
+                continue
+            bbox = bboxes[key]
+            bbox_56 += bbox
+            prob_56 += probs[key]
+
+        # 그다음 overlap_thresh = 0으로 NMS 수행 (iou가 0, 즉 겹치지 않는 bbox들은 우선 살아남게)
+        new_boxes, new_probs = roi_helpers.non_max_suppression_fast(np.array(bbox_56), np.array(prob_56), overlap_thresh=0.4)
+
+        if len(new_boxes) == 0:
+            pass
+        elif len(new_boxes) == 1:
+            if new_boxes[0].tolist() in bboxes['5']:
+                key = '5'
+            else:   # i.e., new_boxes[0].tolist() in bboxes['6']
+                key = '6'
+            (x1, y1, x2, y2) = new_boxes[0, :]
+            (real_x1, real_y1, real_x2, real_y2) = self.get_real_coordinates(ratio, x1, y1, x2, y2)
+            (real_x, real_y, real_w, real_h) = real_x1, real_y1, real_x2 - real_x1, real_y2 - real_y1
+            components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[0]])
+        else:   # len(new_boxes) >= 2인 경우
+            # confidence 기준으로 top 2 만 남김
             idxs = np.argsort(new_probs)[::-1]
-            if key == '5' and len(new_boxes) > 1:
-                new_boxes_5 = new_boxes[idxs[0]].tolist()
-                new_probs_5 = new_probs[idxs[0]]
-                new_boxes_6 = new_boxes[idxs[1]].tolist()
-                new_probs_6 = new_probs[idxs[1]]
-                if '6' not in bboxes_copy:
-                    bboxes_copy['6'] = []
-                    probs_copy['6'] = []
-                bboxes_copy['5'].append(new_boxes_5)
-                probs_copy['5'].append(new_probs_5)
-                bboxes_copy['6'].append(new_boxes_6)
-                probs_copy['6'].append(new_probs_6)
-            elif key == '6' and len(new_boxes) > 1:
-                new_boxes_6 = new_boxes[idxs[0]].tolist()
-                new_probs_6 = new_probs[idxs[0]]
-                new_boxes_5 = new_boxes[idxs[1]].tolist()
-                new_probs_5 = new_probs[idxs[1]]
-                if '5' not in bboxes_copy:
-                    bboxes_copy['5'] = []
-                    probs_copy['5'] = []
-                bboxes_copy['6'].append(new_boxes_6)
-                probs_copy['6'].append(new_probs_6)
-                bboxes_copy['5'].append(new_boxes_5)
-                probs_copy['5'].append(new_probs_5)
+            new_boxes = new_boxes[idxs][:2]
+            new_probs = new_probs[idxs][:2]
+            # keys: 남은 두 bbox 각각의 part id
+            part_ids_temp = []
+            part_ids_temp.append('5') if new_boxes[0].tolist() in bboxes['5'] else part_ids_temp.append('6')
+            part_ids_temp.append('5') if new_boxes[1].tolist() in bboxes['5'] else part_ids_temp.append('6')
+            # case1) part_ids 둘 다 part5 인 경우: confidence 더 낮은 건 part6으로.
+            if part_ids_temp == ['5', '5']:
+                part_ids = ['5', '6']
+            # case2) part_ids 둘 다 part6 인 경우: confidence 더 낮은 건 part5로.
+            elif part_ids_temp == ['6', '6']:
+                part_ids = ['6', '5']
+            # case3) part_ids가 ['5', '6'] 또는 ['6', '5']인 경우, 그대로 사용
             else:
-                bboxes_copy[key] += new_boxes.tolist()
-                probs_copy[key] += new_probs.tolist()
+                part_ids = part_ids_temp
 
-        for key in bboxes_copy:
-            bbox = np.array(bboxes_copy[key])
-            new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs_copy[key]), overlap_thresh=-1)
-
-            for jk in range(new_boxes.shape[0]):
+            for jk, key in enumerate(part_ids):
                 (x1, y1, x2, y2) = new_boxes[jk, :]
 
                 (real_x1, real_y1, real_x2, real_y2) = self.get_real_coordinates(ratio, x1, y1, x2, y2)
                 (real_x, real_y, real_w, real_h) = real_x1, real_y1, real_x2 - real_x1, real_y2 - real_y1
-
-                if key not in components_dict:
-                    components_dict[key] = []
-                # if key not in confidences_dict:
-                #     confidences_dict[key] = []
-
                 components_dict[key].append([real_x, real_y, real_w, real_h, new_probs[jk]])
-                # confidences_dict[key].append(new_probs[jk])
-
-        for key in self.C.class_mapping.values():
-            if key not in components_dict:
-                components_dict[key] = []
-            # if key not in confidences_dict:
-            #     confidences_dict[key] = []
 
         return components_dict
 

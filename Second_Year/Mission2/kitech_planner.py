@@ -99,10 +99,7 @@ def program_run(csock_S, loop, step=1, add_cad=0):
 #                print(bcolors.CBLUE2+bcolors.CBOLD+"3. Request recognize info"+bcolors.CEND)
 #                break
 
-        if i==step-1:
-            send_msg = "request_recognize_info#%d#1#%d"%(i+1, add_cad) # 서울대에 인식 정보 요청
-        else:
-            send_msg = "request_recognize_info#%d#0#%d"%(i+1, add_cad)
+        send_msg = "request_recognize_info" # 서울대에 인식 정보 요청
         csock_S.send(send_msg.encode())
 
         while True:
