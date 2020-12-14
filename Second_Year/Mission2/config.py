@@ -13,6 +13,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--ocr_class_weight_path', default=os.path.join('./model', 'OCR', 'weight'))
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
     parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission2'))
+    parser.add_argument('--fastener_model_path', default=os.path.join('./model', 'fastener', 'mission2'))
 
     parser.add_argument('--mission1', type=str2bool, default=False)
     parser.add_argument('--temp_settings', type=str2bool, default=False)
@@ -34,6 +35,8 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_pose_visualization', type=str2bool, default=True)
     parser.add_argument('--save_pose_visualization_separate', type=str2bool, default=True)
     parser.add_argument('--save_part_id_pose', type=str2bool, default=True)
+    parser.add_argument('--save_fastener_prediction_maps', type=str2bool, default=True)
+    parser.add_argument('--save_fastener_visualization', type=str2bool, default=True)
     parser.add_argument('--gpu', default='0')
     parser.add_argument('--print_time', type=str2bool, default=False)
     parser.add_argument('--mid_RT_on', type=str2bool, default=True)
@@ -87,6 +90,9 @@ def init_args(description='Robot'):
     opt.initial_pose_estimation_prediction_maps_path = os.path.join(opt.initial_pose_estimation_path, 'prediction_maps')
     opt.initial_pose_estimation_visualization_path = os.path.join(opt.initial_pose_estimation_path, 'visualization')
     opt.initial_pose_estimation_visualization_separate_path = os.path.join(opt.initial_pose_estimation_path, 'visualization_separate')
+    opt.fastener_detection_path = os.path.join(opt.intermediate_results_path, 'fastener_detection')
+    opt.fastener_detection_prediction_maps_path = os.path.join(opt.fastener_detection_path, 'prediction_maps')
+    opt.fastener_detection_visualization_path = os.path.join(opt.fastener_detection_path, 'visualization')
 
     opt.output_dir = os.path.join(opt.output_dir, opt.assembly_name)
 

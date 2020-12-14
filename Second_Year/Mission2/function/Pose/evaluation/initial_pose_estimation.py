@@ -16,7 +16,6 @@ from torchvision import transforms, utils
 from torch.utils.data import DataLoader
 
 from ..bop_toolkit_lib.misc import *
-from ..datasets.correspondence_block_dataset import CorrespondenceBlockDataset
 from ..models.correspondence_block_model import CorrespondenceBlockModel
 from ..utils.pose_gt import *
 
@@ -350,68 +349,70 @@ class InitialPoseEstimation():
             return np.eye(3), np.array([0, 0, 25]).reshape(3, 1)
 
 
-    def save_pose_visualization(self, args, step_num, save_sep=True):
+    def visualize(self, args, step_num, save_sep=True):
         color = Color()
-        step_img = args.steps[step_num].copy()
-        if save_sep:
-            step_imgs = []
-            for i in range(len(args.cad_names)):
-                step_imgs.append(step_img.copy())
-        H, W, _ = step_img.shape
-        cad_models = args.cad_models[step_num]
-        obj_ids = [int(x.replace('part', '')) for x in cad_models]
-        poses = args.pose_return_dict[step_num]
-        K = args.K
-        for obj_id, RT in zip(obj_ids, poses):
-            obj_idx = obj_id - 1
-            pts_color = color(obj_id)
-            R = RT[:,:3]
-            if np.all(R == np.eye(3)):
-                continue
-            T = RT[:,3].reshape(3, 1)
-            pts = self.point_clouds[obj_idx]
+        save_sep = args.opt.save_pose_visualization_separate
+        if args.opt.save_pose_visualization:
+            step_img = args.steps[step_num].copy()
+            if save_sep:
+                step_imgs = []
+                for i in range(len(args.cad_names)):
+                    step_imgs.append(step_img.copy())
+            H, W, _ = step_img.shape
+            cad_models = args.cad_models[step_num]
+            obj_ids = [int(x.replace('part', '')) for x in cad_models]
+            poses = args.pose_return_dict[step_num]
+            K = args.K
+            for obj_id, RT in zip(obj_ids, poses):
+                obj_idx = obj_id - 1
+                pts_color = color(obj_id)
+                R = RT[:,:3]
+                if np.all(R == np.eye(3)):
+                    continue
+                T = RT[:,3].reshape(3, 1)
+                pts = self.point_clouds[obj_idx]
 
-            # project points
-            projected_2d_pts = self.project_pts(pts, K, R, T).astype(int)
-            projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
-            projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
-            for pt in projected_2d_pts:
-                cv2.circle(step_img, (pt[0], pt[1]), 7, pts_color, -1)
-            if save_sep:
+                # project points
+                projected_2d_pts = self.project_pts(pts, K, R, T).astype(int)
+                projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
+                projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
                 for pt in projected_2d_pts:
-                    cv2.circle(step_imgs[obj_idx], (pt[0], pt[1]), 7, pts_color, -1)
-            
-            # draw axes
-            arrow_length = 1
-            axis_pts = np.array([[0 ,0, 0], [arrow_length, 0, 0], [0, arrow_length, 0], [0, 0, arrow_length]])
-            projected_2d_pts = self.project_pts(axis_pts, K, R, T).astype(int)
-            projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
-            projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
-            
-            center = projected_2d_pts[0]
-            xaxis = projected_2d_pts[1]
-            yaxis = projected_2d_pts[2]
-            zaxis = projected_2d_pts[3]
-            cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 0), 12)
-            cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 255), 8)
-            cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 0, 0), 12)
-            cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 255, 255), 8)
-            cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (0, 0, 0), 12)
-            cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (153, 0, 0), 8)
+                    cv2.circle(step_img, (pt[0], pt[1]), 7, pts_color, -1)
+                if save_sep:
+                    for pt in projected_2d_pts:
+                        cv2.circle(step_imgs[obj_idx], (pt[0], pt[1]), 7, pts_color, -1)
+                
+                # draw axes
+                arrow_length = 1
+                axis_pts = np.array([[0 ,0, 0], [arrow_length, 0, 0], [0, arrow_length, 0], [0, 0, arrow_length]])
+                projected_2d_pts = self.project_pts(axis_pts, K, R, T).astype(int)
+                projected_2d_pts[:, 0] = np.clip(projected_2d_pts[:, 0], 0, W - 1)
+                projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
+                
+                center = projected_2d_pts[0]
+                xaxis = projected_2d_pts[1]
+                yaxis = projected_2d_pts[2]
+                zaxis = projected_2d_pts[3]
+                cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_img, tuple(center), tuple(xaxis), (0, 0, 255), 8)
+                cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 255, 255), 8)
+                cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (0, 0, 0), 12)
+                cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (153, 0, 0), 8)
+                if save_sep:
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 0), 12)
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 255), 8)
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 0, 0), 12)
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 255, 255), 8)
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (0, 0, 0), 12)
+                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (153, 0, 0), 8)
+            cv2.imwrite(args.opt.initial_pose_estimation_visualization_path + '/STEP_{}.png'.format(step_num), step_img)
             if save_sep:
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 0), 12)
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 255), 8)
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 0, 0), 12)
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 255, 255), 8)
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (0, 0, 0), 12)
-                cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (153, 0, 0), 8)
-        cv2.imwrite(args.opt.initial_pose_estimation_visualization_path + '/STEP_{}.png'.format(step_num), step_img)
-        if save_sep:
-            template = []
-            for i in range(len(args.cad_names)):
-                step_img_sep = step_imgs[i]
-                template = np.concatenate((template, step_img_sep), axis=1) if len(template) else step_img_sep
-            cv2.imwrite(args.opt.initial_pose_estimation_visualization_separate_path + '/STEP_{}.png'.format(step_num), template)
+                template = []
+                for i in range(len(args.cad_names)):
+                    step_img_sep = step_imgs[i]
+                    template = np.concatenate((template, step_img_sep), axis=1) if len(template) else step_img_sep
+                cv2.imwrite(args.opt.initial_pose_estimation_visualization_separate_path + '/STEP_{}.png'.format(step_num), template)
         
 
 

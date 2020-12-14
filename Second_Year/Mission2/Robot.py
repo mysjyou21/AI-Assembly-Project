@@ -7,6 +7,7 @@ sys.path.append('./function')
 sys.path.append('./function/OCR')
 sys.path.append('./function/Pose')
 sys.path.append('./function/utilities')
+sys.path.append('./function/Hole_detection')
 from config import *
 from function.utilities.utils import *  # set_connectors, set_steps_from_cut
 from function.frcnn.DetectionModel import DetectionModel
@@ -16,6 +17,7 @@ from function.numbers import *
 from function.mission_output import *
 from function.OCRs_new import *
 from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
+from function.Fastener.evaluation.fastener_detection import FastenerDetection
 from function.hole import *
 from function.Grouping_mid.hole_loader import base_loader, mid_loader
 from function.Grouping_mid.grouping_RT import transform_hole, baseRT_to_midRT
@@ -58,7 +60,12 @@ class Assembly():
         with self.graph_pose.as_default():
             self.sess_pose = tf.Session(config=config)
             self.pose_model = InitialPoseEstimation(self)
+        self.graph_fastener = tf.Graph()
+        with self.graph_fastener.as_default():
+            self.sess_fastener = tf.Session(config=config)
+            self.fastener_model = FastenerDetection(self)
         self.hole_detector_init = MSN2_hole_detector(self.opt)
+        
         # Detection variables
         # component detection results, (x, y, w, h)
         self.circles_loc = {}
@@ -73,24 +80,21 @@ class Assembly():
         self.tools_loc = {}
         self.is_merged = {}
         self.is_tool = {}
-        # 이삭 to 민우 : 이거 두 개도 중간 step부터 시작할때 loading 되게 해야 함
         self.unused_parts = {1 : [1, 2, 3, 4, 5, 6, 7, 8]} # unused parts {step_num : list of part ids}
         self.used_parts = {} # used parts {step_num : list of part ids}
-
+        self.parts = {}  # detected part images {step_num  : list of part images}
+        self.parts_bboxed = {}  # detected part images shown as bbox on whole image {step_num  : list of part images}
+        self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
+        
         # component recognition results, string
         self.connectors_serial_OCR = {}
         self.connectors_mult_OCR = {}
 
         # Retrieval variables
-        self.part_H = self.part_W = 224
-        self.parts = {}  # detected part images {step_num  : list of part images}
-        self.parts_bboxed = {}  # detected part images shown as bbox on whole image {step_num  : list of part images}
-        self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
-        self.cad_models = {}  # names of cad models of retrieval results
-        self.candidate_classes = []  # candidate cad models for retrieval (not used)
-        self.hole_pairs = {}
-
+        self.candidate_classes = []  # candidate cad models for retrieval
+        
         # Pose variables
+        self.cad_models = {}  # names of cad models of retrieval results
         self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
         self.pose_save_dict = {} # RT of detected part images (save version) {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
         self.pose_save_dict['000000'] = {}
@@ -101,6 +105,17 @@ class Assembly():
             0.0,0.0,1.0]).reshape(3,3) # camera intrinsic matrix
         self.RTs = np.load(self.opt.pose_data_path + '/RTs.npy') # 48 RTs to compare with pose_network prediction
         self.VIEW_IMGS = np.load(self.opt.pose_data_path + '/view_imgs.npy') # VIEWS to display pose output
+
+        # Hole variables
+        self.fasteners_loc = {} # detected fastener(=small component) locations {step_num : fastener_dict}
+        '''
+        fastener_dict :
+            key : 'bracket', 'long_screw', 'short_screw', 'wood_pin'
+            value : list of indiv fastener loc (default = [])
+                indiv fastener loc : [(x, y, w, h)->bbox, (x, y)->centroid position]
+        '''
+        self.hole_pairs = {}
+
 
         # Final output
         self.actions = {}  # dictionary!! # [part1_loc, part1_id, part1_pos, part2_loc, part2_id, part2_pos, connector1_serial_OCR, connector1_mult_OCR, connector2_serial_OCR, connector2_mult_OCR, action_label, is_part1_above_part2(0,1)]
@@ -508,8 +523,7 @@ class Assembly():
         self.parts_info[step_num] = self.cad_models[step_num]
 
         # pose visualization
-        if self.opt.save_pose_visualization:
-            self.pose_model.save_pose_visualization(self, step_num, self.opt.save_pose_visualization_separate)
+        self.pose_model.visualize(self, step_num)
 
         # classify to nearest GT pose
         def closest_gt_RT_index(RT_pred):
@@ -521,6 +535,39 @@ class Assembly():
 
         print('modified classified classes : ', self.cad_models[step_num]) #blue
         print('matched_poses', matched_poses) #blue
+
+
+    def fastener_detector(self, step_num):
+        """ Fastener detection
+
+        '122620' = 'bracket',
+        '104322' = 'long_screw',
+        '122925' = 'short_screw',
+        '101350' = 'wood_pin'
+        
+        Args:
+            step_num: step number
+        Uses:
+            self.steps
+            self.circles_loc
+            self.rectangles_loc
+            self.connectors_serial_OCR
+
+        Updates:
+            self.fasteners_loc :
+                detected fastener(=small component) locations {step_num : fastener_dict}
+                    fastener_dict :
+                        key : 'bracket', 'long_screw', 'short_screw', 'wood_pin'
+                        value : list of indiv fastener loc (default = [])
+                            indiv fastener loc : [(x, y, w, h)->bbox, (x, y)->centroid position]
+        Returns:
+            None
+        """
+        # run
+        self.fastener_model.test(self, step_num)
+        # visualize
+        self.fastener_model.visualize(self, step_num)
+    
 
     def group_as_action(self, step_num):  # action 관련 정보들을 묶어서 self.actions에 넣고 ./output에 json write
         """ Group components in action-unit
@@ -672,11 +719,6 @@ class Assembly():
                         temp = copy.deepcopy(step_part)
                         step_part[0] = temp[1]
                         step_part[1] = temp[0]
-                    step_part[0][0] = 'step1_a'
-                    step_part[1][0] = 'step1_b'
-
-                if step_num==1 and self.step_action['parts#']==1 and step_part[0][0] in ['part2', 'part3']:
-                    step_part[0][0] = 'step1'
 
                 for act_i in range(len(step_part) - 1):
                     action_dic = OrderedDict()
@@ -724,7 +766,7 @@ class Assembly():
                     step_dic['Action%d' % act_i] = action_dic
 
             else:  # serial은 1개 인데 connectivity != '' -> 무언가로 연결해야함 (1:1 or 1:many 연결)
-                connectivity = connectivity.split('#')
+                connectivity = connectivity[0].split('#')
                 if len(connectivity) == 2:  # 1:1 connecivity
                     action_dic = OrderedDict()
 
@@ -779,6 +821,24 @@ class Assembly():
                     action_dic['HolePair'] = self.hole_pairs[step_num]
 
                     step_dic['Action%d' % 0] = action_dic
+                elif len(connectivity) == 4:  # temp 1:many -> to be added
+                    action_dic = OrderedDict()
+                    for i in range(0, 4):
+                        part_dic = {}
+                        action_dic['Part%d' % i] = part_dic
+                    action_lab_dic = OrderedDict()
+                    action_lab_dic['label'] = ''
+                    action_lab_dic['#'] = ''
+                    action_dic['Action'] = action_lab_dic
+
+                    connector_dic = OrderedDict()
+                    connector_dic['label'] = ''
+                    connector_dic['#'] = ''
+                    action_dic['Connector'] = connector_dic
+                    action_dic['HolePair'] = []
+
+                    step_dic['Action%d' % 0] = action_dic
+
 
         elif self.step_action['action'] in [['A005'], ['A006']]:
             action_dic = OrderedDict()
@@ -945,7 +1005,7 @@ class Assembly():
             hole_pairs = self.hole_pairs
 
             parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, used_parts=self.used_parts[step_num-1])
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, used_parts=self.used_parts[step_num-1], fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs
@@ -969,7 +1029,7 @@ class Assembly():
             hole_pairs = self.hole_pairs
 
             parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid)
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs

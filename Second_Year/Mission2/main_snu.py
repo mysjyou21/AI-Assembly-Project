@@ -111,6 +111,7 @@ def main():
         else:
             IKEA.predict_pose(step)
 
+        IKEA.fastener_detector(step)
 
         if step > 2 and opt.mid_RT_on:
             IKEA.group_RT_mid(step)

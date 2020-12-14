@@ -126,6 +126,9 @@ def main():
                 IKEA.detect_step_component(step)
 
                 IKEA.predict_pose(step)
+                
+                IKEA.fastener_detector(step)
+
                 if step > 2 and opt.mid_RT_on:
                     IKEA.group_RT_mid(step)
                     if opt.hole_detection_on:

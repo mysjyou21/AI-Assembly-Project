@@ -264,10 +264,10 @@ class DetectionModel():
                 # step4: [[160, 448, 304, 576]]
                 # step5: [[192, 464, 336, 592]]
                 ##### Temp #######
+#                if key == '4' and step_num == 4:
+#                    new_boxes = np.asarray([[160, 448, 304, 576]])
+#                    new_probs = np.asarray([0.999])
                 if key == '4' and step_num == 4:
-                    new_boxes = np.asarray([[160, 448, 304, 576]])
-                    new_probs = np.asarray([0.999])
-                elif key == '4' and step_num == 5:
                     new_boxes = np.asarray([[192, 464, 336, 592]])
                     new_probs = np.asarray([0.999])
                 ##################
