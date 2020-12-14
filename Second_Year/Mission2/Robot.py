@@ -152,17 +152,14 @@ class Assembly():
             self.cuts.append(cut)
 
         idx = 1
-        for _, cut in enumerate(cuts):
+        for cut in cuts[self.opt.starting_cut-1:]:
             # resize
             cut_resized = resize_cut(cut)
             # preprocessing
             cut_resized = prep_carpet(cut_resized)
-            # material 소개 cut 제외
-            if is_valid_cut(cut_resized):
-                self.steps[idx] = cut_resized
-                self.num_steps += 1
-                idx += 1
-
+            self.steps[idx] = cut_resized
+            self.num_steps += 1
+            idx += 1
 
     def detect_step_component(self, step_num, print_result=True):  # 준형
         """

@@ -52,11 +52,19 @@ class InitialPoseEstimation():
             sess = args.sess_pose
             self.model = CorrespondenceBlockModel(3, 9, 256) # in channels, id channels, uvw channels
             if args.mission1:
-                print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan.pt')
-                checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan.pt', map_location='cuda:0')
+                if args.opt.temp_pose:
+                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan_temp.pt')
+                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan_temp.pt', map_location='cuda:0')    
+                else:
+                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan.pt')
+                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan.pt', map_location='cuda:0')
             else:
-                print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
-                checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
+                if args.opt.temp_pose:
+                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_temp.pt')
+                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_temp.pt', map_location='cuda:0')
+                else:
+                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
+                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             self.model.cuda(0)

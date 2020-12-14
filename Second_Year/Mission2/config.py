@@ -44,10 +44,14 @@ def parse_args(description='Robot'):
 
     ############# temp ###########
     parser.add_argument('--temp', type=str2bool, default=False)
+    parser.add_argument('--temp_pose', type=str2bool, default=False)
     ###############################
     parser.add_argument('--blender', default='blender')
 
     parser.add_argument('--step_num', default=False, type=int)
+
+    # starting_cut: zero-indexing
+    parser.add_argument('--starting_cut', default=4, type=int)
 
     opt = parser.parse_args()
 

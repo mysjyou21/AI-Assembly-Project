@@ -87,17 +87,13 @@ class MSN2_hole_detector():
         if self.opt.temp and (self.step_num == 4 or self.step_num==5):
             connector_num = 2
             self.mult = 2
-        # fastenerInfo_list = fastener_loader_v2(self, self.cut_image.copy(), part_holeInfo_dict, component_list, self.fasteners_loc)
-
-        # for key, val in part_holeInfo_dict.items():
-        #     val_temp = sorted(val,key=lambda x:x[1])
-        #     part_holeInfo_dict[key] = val_temp.copy()
 
         # 입력된 연결자 정보로, hole 활성화
         for part_id, part_holeInfo in part_holeInfo_dict.items():
             part_holeInfo_temp_ = part_holeInfo_dict[part_id].copy()
             part_holeInfo_temp = [x for x in part_holeInfo_temp_ if connector in x]
             part_holeInfo_dict[part_id] = part_holeInfo_temp.copy()
+
         # 중간 산출물 단위로 묶어줌 --> 중간산출물 + 새로운 부품으로 나뉘어짐
         matched_pose_temp = {}
         for part_info in step_parts_info:
@@ -109,6 +105,32 @@ class MSN2_hole_detector():
                 id_list.append(part_info[0])
                 matched_pose_temp[part_RT] = id_list
         total_count = len(matched_pose_temp.keys()) # --> 큰 단위로, 2개 이상이면 결합 진행
+
+        # 위에 있는 연결자 파악
+        if not self.opt.mission1:
+            connectors_loc = self.fasteners_loc[self.step_num][self.OCR_to_fastener[self.connector]]
+            connectors_center = [x[1] for x in connectors_loc]
+            part_up_connectors = {}
+            part_holeInfo_dict_up = {}
+            part_holeInfo_dict_down = {}
+            for key, val in part_holeInfo_dict.items():
+                val_temp = sorted(val,key=lambda x:x[2])
+                cut_idx = int(len(val_temp)/2)
+                part_holeInfo_dict_up[key] = val_temp[cut_idx:].copy()
+                part_holeInfo_dict_down[key] = val_temp[:cut_idx].copy()
+            if self.connector == '101350':
+                for new_id in self.new_id_list:
+                    if new_id != 'part5' and new_id != 'part6':
+                        up_connectors = list()
+                        new_id_holes = part_holeInfo_dict_up[new_id]
+                        max_holes_x = max([x[1] for x in new_id_holes])
+                        min_holes_x = min([x[1] for x in new_id_holes])
+                        min_holes_y = min([x[2] for x in new_id_holes])
+                        for connector_center in connectors_center:
+                            if connector_center[0] < max_holes_x + 100 and connector_center[0] > min_holes_x - 100 and connector_center[1] > min_holes_y-50:
+                                up_connectors.append(connector_center)
+                                part_up_connectors[new_id] = up_connectors.copy()
+            up_connectors_num = sum([len(val) for key, val in part_up_connectors.items()])
 
         if self.opt.mission1:
             if self.connector == "101350":
@@ -135,13 +157,8 @@ class MSN2_hole_detector():
                 print(step_info)
 
             elif (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0) or len(self.new_id_list)>1) and self.connector == "101350":
-                # connector_num = int(connector_num/2)
-                step_info_sub1 = point_matching(self,step_num, connector_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
-                matched_count = 0
-                for partInfo in step_info_sub1:
-                    if partInfo != '':
-                        matched_count += len(partInfo[2])
-                connector_num -= matched_count
+                step_info_sub1 = point_matching(self,step_num, up_connectors_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
+                connector_num -= up_connectors_num
                 step_info_sub2, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
                 step_info = list()
                 for part1_info in step_info_sub1:
@@ -157,6 +174,8 @@ class MSN2_hole_detector():
                                 step_info.append([part1_id, part1_RT,new_info_holes])
                             else:
                                 step_info.append(part2_info)
+                if len(step_info) == 0:
+                    step_info = step_info_sub2
                 print(step_info)
                 self.parts_info[step_num] = step_info
                 self.hole_pairs[step_num] = hole_pairs

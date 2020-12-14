@@ -63,6 +63,9 @@ class FastenerDetection():
             self.model.eval()
             self.model.cuda(0)
 
+        refresh_folder(args.opt.fastener_detection_prediction_maps_path)
+        refresh_folder(args.opt.fastener_detection_visualization_path)
+
     def test(self, args, step_num):
         """detect fasteners
 

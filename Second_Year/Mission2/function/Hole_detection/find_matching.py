@@ -28,17 +28,6 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
                     if p1 < p2:
                         p1_holeInfo = sorted(part_holeInfo_dict[p1])
                         p2_holeInfo = sorted(part_holeInfo_dict[p2])
-                        # if len(hole_matching_info_list) != 0:
-                        #     for hole_matching_info in hole_matching_info_list:
-                        #         for part_hole in hole_matching_info:
-                        #             if p1 in part_hole:
-                        #                 p1_remove_hole = part_hole[1]
-                        #                 p1_remove_holeInfo = [x for x in p1_holeInfo if p1_remove_hole == x[0]][0]
-                        #                 p1_holeInfo.remove(p1_remove_holeInfo)
-                        #             elif p2 in part_hole:
-                        #                 p2_remove_hole = part_hole[1]
-                        #                 p2_remove_holeInfo = [x for x in p2_holeInfo if p2_remove_hole == x[0]][0]
-                        #                 p2_holeInfo.remove(p2_remove_holeInfo)
                         for p1_hole in p1_holeInfo:
                             for p2_hole in p2_holeInfo:
                                 p1_hole_id = p1_hole[0]

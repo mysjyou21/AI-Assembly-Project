@@ -9,6 +9,7 @@ from itertools import combinations
 from scipy import ndimage
 
 def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
+    used_fasteners_loc = self.fasteners_loc[self.step_num][self.OCR_to_fastener[self.connector]]
     if len(cut_image.shape) == 3:
         gray = cv2.cvtColor(cut_image, cv2.COLOR_RGB2GRAY)
     else:
@@ -29,11 +30,18 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
     thick_vertical_erase = cv2.dilate(thick_vertical_erase_sub,thick_vertical_eraser,iterations=2)
     thin_vertical_lines_sub = inv - thick_vertical_erase
     thin_vertical_lines = np.clip(thin_vertical_lines_sub,0,1)
-
+    
     horizon_erase_sub = cv2.erode(thin_vertical_lines,horizon_eraser,iterations=10)
     horizon_erase = cv2.dilate(horizon_erase_sub,horizon_eraser,iterations=10)
     vertical_lines = horizon_erase.copy()
-    vertical_lines_img = 255*vertical_lines.astype(np.uint8)
+        
+    if not self.opt.mission1:
+        for loc in used_fasteners_loc:
+            lx = loc[0][0]
+            ly = loc[0][1]
+            lw = loc[0][2]
+            lh = loc[0][3]
+            vertical_lines[ly:ly+lh-5,lx-50:lx+lw+50] = 0
 
     sub_comb = vertical_lines.copy()
     # kernel_cc = [[1,1,1],[1,1,1],[1,1,1]]
@@ -58,7 +66,6 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
 
     fastener_img = np.zeros(sub_comb.shape)
     fastenerInfo_list = list()
-    used_fasteners_loc = self.fasteners_loc[self.step_num][self.OCR_to_fastener[self.connector]]
     
     filterd_fastener_id = 0
     for i in range(len(candidates_fastener)):
