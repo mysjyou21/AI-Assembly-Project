@@ -198,16 +198,11 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
         fastener_id = fastenerInfo[0]
 
         part_id_list = sorted(part_holeInfo_dict.keys())
-        if not self.opt.mission1 and self.connector == "101350":
-            part_id_list = self.new_id_list
         dist_list = list()
         distInfo_list = list()
 
         for part in part_id_list:
             part_holeInfo = sorted(part_holeInfo_dict[part])
-            if not self.opt.mission1 and self.connector == "101350":
-                part_holeInfo = sorted(part_holeInfo_dict[part], key=lambda x:x[2])
-                part_holeInfo = part_holeInfo[:int(len(part_holeInfo)/2)]
             for part_hole in part_holeInfo:
                 part_hole_id = part_hole[0]
                 dist = calculate_dist_point(fastenerInfo, part_hole)
@@ -225,8 +220,6 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
     for fastener, connectingInfo in fastener_connectingInfo.items():
         sub_final_dist_list.append(connectingInfo[0])
     dist_list = sorted(sub_final_dist_list)
-    if not self.opt.mission1 and self.connector == "101350":
-        dist_list = [x for x in dist_list if x < 10]
 
     fastener_idxs = [sub_final_dist_list.index(i) for i in dist_list]
     fastener_id_list = list()

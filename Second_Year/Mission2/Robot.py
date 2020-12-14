@@ -104,6 +104,8 @@ class Assembly():
             0.0,3444.4443359375,1240.0,
             0.0,0.0,1.0]).reshape(3,3) # camera intrinsic matrix
         self.RTs = np.load(self.opt.pose_data_path + '/RTs.npy') # 48 RTs to compare with pose_network prediction
+        for RT in self.RTs:
+            RT[:, 3] = 0
         self.VIEW_IMGS = np.load(self.opt.pose_data_path + '/view_imgs.npy') # VIEWS to display pose output
 
         # Hole variables
@@ -151,15 +153,27 @@ class Assembly():
         for cut in cuts:
             self.cuts.append(cut)
 
+        # if argument 'starting_cut' is -1(=default value), is_valid_cut function is used.
         idx = 1
-        for cut in cuts[self.opt.starting_cut-1:]:
-            # resize
-            cut_resized = resize_cut(cut)
-            # preprocessing
-            cut_resized = prep_carpet(cut_resized)
-            self.steps[idx] = cut_resized
-            self.num_steps += 1
-            idx += 1
+        if self.opt.starting_cut == -1:
+            for cut in cuts:
+                # resize
+                cut_resized = resize_cut(cut)
+                # preprocessing
+                cut_resized = prep_carpet(cut_resized)
+                if is_valid_cut(cut_resized):
+                    self.steps[idx] = cut_resized
+                    self.num_steps += 1
+                    idx += 1
+        else:
+            for cut in cuts[self.opt.starting_cut-1:]:
+                # resize
+                cut_resized = resize_cut(cut)
+                # preprocessing
+                cut_resized = prep_carpet(cut_resized)
+                self.steps[idx] = cut_resized
+                self.num_steps += 1
+                idx += 1
 
     def detect_step_component(self, step_num, print_result=True):  # 준형
         """
@@ -526,6 +540,18 @@ class Assembly():
         def closest_gt_RT_index(RT_pred):
             return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
         matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+
+        # # classifiy to nearest GT pose
+        # def closest_gt_RT_index(RT_pred):
+        #     def R_distance(RT1, RT2):
+        #         R1 = RT1[:, :3]
+        #         R2 = RT2[:, :3]
+        #         R = R1.T @ R2
+        #         theta = np.rad2deg(np.arccos((np.trace(R) - 1)/2))
+        #         return theta
+        #     return np.argmin([R_distance(RT, RT_pred) for RT in self.RTs])
+        # matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+
         # individual parts pose visualization
         if self.opt.save_part_id_pose:
             self.pose_model.save_part_id_pose(self, step_num, matched_poses)

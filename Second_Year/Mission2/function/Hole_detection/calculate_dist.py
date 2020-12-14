@@ -9,8 +9,8 @@ from scipy import ndimage
 
 def calculate_dist_pair(fastenerInfo, p1_hole, p2_hole):
     fastener_x = fastenerInfo[1][0]
-    fastener_y_up = fastenerInfo[2][1]
-    fastener_y_down = fastenerInfo[1][1]
+    fastener_y_up = fastenerInfo[1][1]
+    fastener_y_down = fastenerInfo[2][1]
 
     p1_hole_x = p1_hole[1]
     p1_hole_y = p1_hole[2]

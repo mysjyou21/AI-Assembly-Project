@@ -50,8 +50,7 @@ def parse_args(description='Robot'):
 
     parser.add_argument('--step_num', default=False, type=int)
 
-    # starting_cut: zero-indexing
-    parser.add_argument('--starting_cut', default=4, type=int)
+    parser.add_argument('--starting_cut', default=-1, type=int)
 
     opt = parser.parse_args()
 

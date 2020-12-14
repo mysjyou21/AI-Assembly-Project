@@ -90,7 +90,7 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                         if x_mean <= x1 or x_mean >= x2 or y_end <= y1 or y_start >= y2:
                             continue
                         else:
-                            fastenerInfo = [filterd_fastener_id,(x_mean,y_start),(x_mean,y_end)]
+                            fastenerInfo = [filterd_fastener_id,(x_mean,y_start),(x_mean,y_end+20)]
                             fastenerInfo_list.append(fastenerInfo.copy())
                             filterd_fastener_id += 1
                             count += 1

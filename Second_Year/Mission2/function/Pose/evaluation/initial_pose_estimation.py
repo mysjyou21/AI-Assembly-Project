@@ -113,13 +113,28 @@ class InitialPoseEstimation():
             vmask_pred = torch.argmax(vmask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
             wmask_pred = torch.argmax(wmask_pred, dim=1).squeeze().cpu().detach().numpy()  # leave maximum value
 
-            _H, _W = idmask_pred.shape
+            ID = idmask_pred.astype(np.uint8)
+
+            # remove small components
+            ID_binarized = np.where(ID > 0, 255, 0).astype(np.uint8)
+            retval, labels, stats, centroids = cv2.connectedComponentsWithStats(ID_binarized, connectivity=4)
+            remain_indices = []
+            for i, stat in enumerate(stats):
+                remain = True
+                x, y, w, h, px = stat
+                if px < 300:
+                    remain = False
+                if remain:
+                    remain_indices.append(i)
+            mask = (np.isin(labels, remain_indices) * 255).astype(np.uint8)
+            ID = np.where(mask > 0, ID, 0)
+            
+            _H, _W = ID.shape
             ID_color = np.zeros((_H, _W, 3)).astype(np.uint8)
             for h in range(_H):
                 for w in range(_W):
-                    ID_color[h, w, :] = color(idmask_pred[h, w])
+                    ID_color[h, w, :] = color(ID[h, w])
 
-            ID = idmask_pred.astype(np.uint8)
             EDGE = (255 * edgemask_pred).astype(np.uint8)
             U = umask_pred.astype(np.uint8)
             V = vmask_pred.astype(np.uint8)

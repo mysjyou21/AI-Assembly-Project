@@ -139,7 +139,7 @@ def is_valid_cut(img):  # JH
 
     ## Find step number using erosion. ##
     # 1. Erode left-upper side of image
-    left_upper_bbox = [144, 179, 475, 383]  # [x1, y1, x2, y2]
+    left_upper_bbox = [144, 179, 500, 500]  # [x1, y1, x2, y2]
     [x1, y1, x2, y2] = left_upper_bbox
     img_left_upper = img_inv[y1:y2, x1:x2]
     _, img_inv = cv.threshold(img_left_upper, thresh=100, maxval=255, type=cv.THRESH_BINARY)
@@ -147,8 +147,8 @@ def is_valid_cut(img):  # JH
     img_eroded = cv.erode(img_left_upper, kernel, iterations=1)
     # 2. If mean pixel value of eroded image is between 2 and 10, given cut is valid
     mean_value = np.mean(img_eroded)
-    threshold_min = 1.
-    threshold_max = 10.
+    threshold_min = 0.9
+    threshold_max = 30.
     if threshold_min < mean_value < threshold_max:
         is_valid = True
     else:
