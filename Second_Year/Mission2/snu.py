@@ -94,8 +94,8 @@ def main():
                 if step == 1: # 스탭 1은 중간산출물이 없기 때문에 파일을 읽어가지 않음
                     SIGNAL = True
                 else:
-                    for p in new_cad_list[step-2]:
-                        os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
+#                    for p in new_cad_list[step-2]:
+#                        os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
                     SIGNAL = False
                     while not SIGNAL:
                         print('Waiting Signal ...', end='\r')

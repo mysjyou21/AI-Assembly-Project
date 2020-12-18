@@ -35,7 +35,6 @@ class Assembly():
 
     def __init__(self, opt):
         self.opt = opt
-        self.mission1 = opt.mission1 # mission1 mode
         self.cuts = []
         self.cut_names = []
         self.steps = {}
@@ -96,8 +95,6 @@ class Assembly():
         # Pose variables
         self.cad_models = {}  # names of cad models of retrieval results
         self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
-        self.pose_save_dict = {} # RT of detected part images (save version) {000000 : step_num(6 digit string) : list of obj_dicts} ("cam_R_m2c", "cam_t_m2c", "obj_id" in obj_dict)
-        self.pose_save_dict['000000'] = {}
         self.cad_names = ['part1', 'part2', 'part3', 'part4', 'part5', 'part6', 'part7', 'part8']
         self.K = np.array([
             3444.4443359375,0.0,874.0,
@@ -256,8 +253,10 @@ class Assembly():
                 py = int(y - margin)
                 cv.putText(step_group_img, mult_OCR, (px, py), cv.FONT_HERSHEY_SIMPLEX, fontScale=1.2, color=color,
                            thickness=3)
-
         if self.opt.save_group_image:
+            if step_num == 1:
+                if os.path.exists(self.opt.group_image_path):
+                    shutil.rmtree(self.opt.group_image_path)
             if not os.path.exists(self.opt.group_image_path):
                 os.makedirs(self.opt.group_image_path)
 
@@ -275,9 +274,11 @@ class Assembly():
                         color=parts_color, thickness=3)
 
         if self.opt.save_part_image:
+            if step_num == 1:
+                if os.path.exists(self.opt.part_image_path):
+                    shutil.rmtree(self.opt.part_image_path)
             if not os.path.exists(self.opt.part_image_path):
                 os.makedirs(self.opt.part_image_path)
-
             img_name = os.path.join(self.opt.part_image_path, '%02d.png' % step_num)
             cv.imwrite(img_name, step_part_img)
 
@@ -296,6 +297,12 @@ class Assembly():
 
         # save detection result images
         if self.opt.save_detection:
+            if step_num == 1:
+                if os.path.exists(self.opt.detection_path):
+                    shutil.rmtree(self.opt.detection_path)
+            if not os.path.exists(self.opt.detection_path):
+                os.makedirs(self.opt.detection_path)
+
             if not os.path.exists(self.opt.detection_path):
                 os.makedirs(self.opt.detection_path)
             for i in range(len(self.parts[step_num])):
@@ -305,7 +312,6 @@ class Assembly():
         # update self.used_parts[step_num] / self.unused_parts[step_num + 1]
         self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
         self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
-
 
     def component_detector(self, step_num):  # 준형
         """ Detect the components in the step image, return the detected components' locations (x, y, w, h, group_index)
@@ -517,9 +523,6 @@ class Assembly():
         """
         # ensure directories
         # :resume from this step functionality
-        self.part_dir = self.opt.cad_path + '/' + str(step_num)
-        if not os.path.exists(self.part_dir):
-            os.mkdir(self.part_dir)
 
         # detection classification results
         self.cad_models[step_num] = self.parts_info[step_num].copy()
@@ -536,25 +539,23 @@ class Assembly():
         # pose visualization
         self.pose_model.visualize(self, step_num)
 
-        # classify to nearest GT pose
+        # classifiy to nearest GT pose
+        def R_distance(RT1, RT2):
+            R1 = RT1[:, :3]
+            R2 = RT2[:, :3]
+            R = R1.T @ R2
+            theta = np.rad2deg(np.arccos((np.trace(R) - 1)/2))
+            return theta
         def closest_gt_RT_index(RT_pred):
-            return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs])
+            return np.argmin([R_distance(RT, RT_pred) for RT in self.RTs])
+        def closest_gt_RT_index_list(RT_pred):
+            return [R_distance(RT, RT_pred) for RT in self.RTs]
         matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
-
-        # # classifiy to nearest GT pose
-        # def closest_gt_RT_index(RT_pred):
-        #     def R_distance(RT1, RT2):
-        #         R1 = RT1[:, :3]
-        #         R2 = RT2[:, :3]
-        #         R = R1.T @ R2
-        #         theta = np.rad2deg(np.arccos((np.trace(R) - 1)/2))
-        #         return theta
-        #     return np.argmin([R_distance(RT, RT_pred) for RT in self.RTs])
-        # matched_poses = [closest_gt_RT_index(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+        matched_poses_list = [closest_gt_RT_index_list(RT_pred) for RT_pred in self.pose_return_dict[step_num]]
+        R_list = [RT_pred[:, :3] for RT_pred in self.pose_return_dict[step_num]]
 
         # individual parts pose visualization
-        if self.opt.save_part_id_pose:
-            self.pose_model.save_part_id_pose(self, step_num, matched_poses)
+        self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
         print('modified classified classes : ', self.cad_models[step_num]) #blue
         print('matched_poses', matched_poses) #blue
@@ -732,7 +733,7 @@ class Assembly():
 
         elif self.step_action['serials'] != [''] and len(self.step_action['serials']) == 1:
             # serial이 허수는 아니며 정상적으로 들어옴 ! ( general case )
-            if connectivity == '':  # serial은 1개 인데 connectivity가 X -> step1 같은 상황
+            if connectivity[0] == '':  # serial은 1개 인데 connectivity가 X -> step1 같은 상황
                 step_part = copy.deepcopy(self.parts_info[step_num])
                 if self.step_action['parts#']==2:
                     part_id = []

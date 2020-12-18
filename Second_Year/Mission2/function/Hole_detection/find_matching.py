@@ -12,61 +12,102 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
     # 각 체결선 별로 hole 까지의 거리 계산해서 체결선 별로 정보 저장
     fastenerInfo_list_original = fastenerInfo_list.copy()
     part_holeInfo_dict_original = part_holeInfo_dict.copy()
-    hole_matching_info_list = list()
-    fastener_id_list = list()
     fastener_connectingInfo_total = {}
-    count = 0
-    while count < connector_num:
-        fastener_connectingInfo = {}
-        for fastenerInfo in fastenerInfo_list:
-            fastener_id = fastenerInfo[0]
-            part_id_list = sorted(part_holeInfo_dict.keys())
-            dist_list = list()
-            distInfo_list = list()
-            for p1 in part_id_list:
-                for p2 in part_id_list:
-                    if p1 < p2:
-                        p1_holeInfo = sorted(part_holeInfo_dict[p1])
-                        p2_holeInfo = sorted(part_holeInfo_dict[p2])
-                        for p1_hole in p1_holeInfo:
-                            for p2_hole in p2_holeInfo:
-                                p1_hole_id = p1_hole[0]
-                                p2_hole_id = p2_hole[0]
-                                dist = calculate_dist_pair(fastenerInfo, p1_hole, p2_hole)
-                                distInfo = [dist, (p1, p1_hole_id), (p2, p2_hole_id)]
-                                dist_list.append(dist)
-                                distInfo_list.append(distInfo)
-            min_idx = dist_list.index(min(dist_list))
-            min_distInfo = distInfo_list[min_idx]
-            assert min(dist_list) == min_distInfo[0]
-            fastener_connectingInfo[fastener_id] = min_distInfo.copy()
-            if count == 0:
-                fastener_connectingInfo_total[fastener_id] = min_distInfo.copy()
-        sub_final_dist_list = list()
-        fastener_idxs_sub = list()
-        for fastener, connectingInfo in fastener_connectingInfo.items():
-            sub_final_dist_list.append(connectingInfo[0])
-            fastener_idxs_sub.append(fastener)
-        min_dist = sorted(sub_final_dist_list)[0]
-        fastener_idx = fastener_idxs_sub[sub_final_dist_list.index(min_dist)]
+    impossible_matching = {}
+    for i in range(len(fastenerInfo_list_original)):
+        impossible_matching[i] = list()
+    intersection = True
+    while intersection:
+        intersection = False
+        fastener_id_list = list()
+        hole_matching_info_list = list()
+        fastenerInfo_list = fastenerInfo_list_original.copy()
+        part_holeInfo_dict = part_holeInfo_dict_original.copy()
+        count = 0
+        while count < connector_num:
+            fastener_connectingInfo = {}
+            for fastenerInfo in fastenerInfo_list:
+                fastener_id = fastenerInfo[0]
+                part_id_list = sorted(part_holeInfo_dict.keys())
+                dist_list = list()
+                distInfo_list = list()
+                for p1 in part_id_list:
+                    for p2 in part_id_list:
+                        if p1 < p2:
+                            p1_holeInfo = sorted(part_holeInfo_dict[p1])
+                            p2_holeInfo = sorted(part_holeInfo_dict[p2])
+                            for p1_hole in p1_holeInfo:
+                                for p2_hole in p2_holeInfo:
+                                    p1_hole_id = p1_hole[0]
+                                    p2_hole_id = p2_hole[0]
+                                    dist = calculate_dist_pair(fastenerInfo, p1_hole, p2_hole)
+                                    distInfo = [dist, (p1, p1_hole_id), (p2, p2_hole_id)]
+                                    matchedInfo = [(p1, p1_hole_id),(p2, p2_hole_id)]
+                                    matchedInfo = sorted(matchedInfo,key=lambda x:x[0])
+                                    if matchedInfo in impossible_matching[fastener_id]:
+                                        continue
+                                    dist_list.append(dist)
+                                    distInfo_list.append(distInfo)
+                min_idx = dist_list.index(min(dist_list))
+                min_distInfo = distInfo_list[min_idx]
+                assert min(dist_list) == min_distInfo[0]
+                fastener_connectingInfo[fastener_id] = min_distInfo.copy()
+                if count == 0:
+                    fastener_connectingInfo_total[fastener_id] = min_distInfo.copy()
+            sub_final_dist_list = list()
+            fastener_idxs_sub = list()
+            for fastener, connectingInfo in fastener_connectingInfo.items():
+                sub_final_dist_list.append(connectingInfo[0])
+                fastener_idxs_sub.append(fastener)
+            min_dist = sorted(sub_final_dist_list)[0]
+            fastener_idx = fastener_idxs_sub[sub_final_dist_list.index(min_dist)]
 
-        # 체결선을 바탕으로 어떤 hole끼리 매칭되었는지 저장하는데, 한번 사용된 hole은 다시 사용될 수 없음.
-        hole_matching_info_raw = fastener_connectingInfo[fastener_idx]
-        part_hole_1 = hole_matching_info_raw[1]
-        part_hole_2 = hole_matching_info_raw[2]
-        hole_matching_info = [hole_matching_info_raw[1],hole_matching_info_raw[2]]
-        hole_matching_info_list.append(hole_matching_info.copy())
-        fastener_id_list.append(fastener_idx)
-        fastenerInfo_list = [x for x in fastenerInfo_list if fastener_idx != x[0]]
+            # 체결선을 바탕으로 어떤 hole끼리 매칭되었는지 저장하는데, 한번 사용된 hole은 다시 사용될 수 없음.
+            hole_matching_info_raw = fastener_connectingInfo[fastener_idx]
+            part_hole_1 = hole_matching_info_raw[1]
+            part_hole_2 = hole_matching_info_raw[2]
+            hole_matching_info = [hole_matching_info_raw[1],hole_matching_info_raw[2]]
+            hole_matching_info_list.append(hole_matching_info.copy())
+            fastenerInfo_list = [x for x in fastenerInfo_list if fastener_idx != x[0]]
 
-        part1_hole_list = part_holeInfo_dict[part_hole_1[0]].copy()
-        part1_hole_list = [x for x in part1_hole_list if part_hole_1[1] != x[0]]
-        part_holeInfo_dict[part_hole_1[0]] = part1_hole_list.copy()
+            part1_hole_list = part_holeInfo_dict[part_hole_1[0]].copy()
+            fastener_id_list.append(fastener_idx)
+            part1_hole_list = [x for x in part1_hole_list if part_hole_1[1] != x[0]]
+            part_holeInfo_dict[part_hole_1[0]] = part1_hole_list.copy()
 
-        part2_hole_list = part_holeInfo_dict[part_hole_2[0]].copy()
-        part2_hole_list = [x for x in part2_hole_list if part_hole_2[1] != x[0]]
-        part_holeInfo_dict[part_hole_2[0]] = part2_hole_list.copy()
-        count += 1
+            part2_hole_list = part_holeInfo_dict[part_hole_2[0]].copy()
+            part2_hole_list = [x for x in part2_hole_list if part_hole_2[1] != x[0]]
+            part_holeInfo_dict[part_hole_2[0]] = part2_hole_list.copy()
+            count += 1
+
+        # 직선 사이에 교점이 있는지 체크: x좌표의 차이의 곱이 음수면 교점 발생
+        matched_holes_coord = list()
+        for m in hole_matching_info_list:
+            coord_sub = list()
+            for h in m:
+                h_coord = [(x[1],x[2]) for x in part_holeInfo_dict_original[h[0]] if h[1] == x[0]][0]
+                coord_sub.append(h_coord)
+            matched_holes_coord.append(coord_sub.copy())
+            h_coord = sorted(matched_holes_coord, key=lambda x:x[1])
+        for i in range(len(matched_holes_coord)):
+            for j in range(len(matched_holes_coord)):
+                if i < j:
+                    matched_holes_1 = matched_holes_coord[i]
+                    matched_holes_2 = matched_holes_coord[j]
+                    mh1_up_x = matched_holes_1[0][0]
+                    mh1_down_x = matched_holes_1[1][0]
+                    mh2_up_x = matched_holes_2[0][0]
+                    mh2_down_x = matched_holes_2[1][0]
+                    if (mh1_up_x - mh2_up_x)*(mh1_down_x-mh2_down_x) < 0:
+                        intersection = True
+                        fastener_id1 = fastener_id_list[i]
+                        fastener_id2 = fastener_id_list[j]
+                        impossible_f1_list = impossible_matching[fastener_id1].copy()
+                        impossible_f2_list = impossible_matching[fastener_id2].copy()
+                        impossible_f1_list.append(sorted(hole_matching_info_list[i].copy(),key=lambda x:x[0]))
+                        impossible_f2_list.append(sorted(hole_matching_info_list[j].copy(),key=lambda x:x[0]))
+                        impossible_matching[fastener_id1] = impossible_f1_list.copy()
+                        impossible_matching[fastener_id2] = impossible_f2_list.copy()
         
     ######## Visualization ###########
     inv_img = cut_image.copy()
@@ -94,6 +135,8 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
         hole_coord_list = sorted(hole_coord_list, key=lambda x:x[1])
         for f_coord, h_coord in zip(fastener_coord_list, hole_coord_list):
             inv_img = cv2.line(inv_img, f_coord, h_coord, (255,0,0), 1)
+        # cv2.imwrite('check_connecting.png', inv_img)
+        # import ipdb; ipdb.set_trace()
     cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), inv_img)
     ##########################################################
 
@@ -147,17 +190,6 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
                     if new_part_id in part_hole:
                         new_part_used_hole.append(part_hole[1])
 
-            if self.opt.mission1:
-                if new_part_id == "part6":
-                    pass
-                else:
-                    new_part_holeInfo = part_holeInfo_dict_original[new_part_id]
-                    new_part_holeId_list = [x[0] for x in new_part_holeInfo]
-                    new_part_holenames = part_holename_dict[new_part_id]
-                    if new_part_id == "part7" or new_part_id == "part8":
-                        new_part_used_hole = [new_part_holenames[i-1] for i in new_part_holeId_list]
-                    else:
-                        new_part_used_hole = [new_part_id+'_1-'+new_part_holenames[i-1] for i in new_part_holeId_list]
             new_parts_info_list.append([new_part_id, new_part_RT_class, new_part_used_hole])
     step_info_sub = mid_info_list + new_parts_info_list
 
@@ -193,11 +225,14 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
     return step_info, hole_pairs_list
 
 def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, cut_image=None):
+    for part,holes in part_holeInfo_dict.items():
+        part_holeInfo_dict[part] = sorted(holes,key=lambda x:x[0]).copy()
     fastener_connectingInfo = {}
     for fastenerInfo in fastenerInfo_list:
         fastener_id = fastenerInfo[0]
-
         part_id_list = sorted(part_holeInfo_dict.keys())
+        dist_list = list()
+        distInfo_list = list()
         dist_list = list()
         distInfo_list = list()
 
@@ -216,13 +251,14 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
         fastener_connectingInfo[fastener_id] = min_distInfo.copy()
     hole_matching_info_list = list()
     sub_final_dist_list = list()
-
+    fastener_idxs_sub = list()
     for fastener, connectingInfo in fastener_connectingInfo.items():
         sub_final_dist_list.append(connectingInfo[0])
+        fastener_idxs_sub.append(fastener)
     dist_list = sorted(sub_final_dist_list)
-
-    fastener_idxs = [sub_final_dist_list.index(i) for i in dist_list]
+    fastener_idxs = list()
     fastener_id_list = list()
+    fastener_idxs = [sub_final_dist_list.index(i) for i in dist_list if i not in fastener_idxs]
     for fastener_idx in fastener_idxs:
         addition = True
         hole_matching_info_raw = fastener_connectingInfo[fastener_idx]
@@ -238,7 +274,7 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
             fastener_id_list.append(fastener_idx)
     hole_matching_info_list = hole_matching_info_list[:connector_num]
     connected_fastener_list = fastener_id_list[:connector_num]
-
+    
     ######### Visualization ###########
     inv_img = cut_image.copy()
     for idx in range(len(connected_fastener_list)):
@@ -261,8 +297,7 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
         self.cut_image = cv2.line(self.cut_image, fastener_coord, hole_coord, (255,0,0), 1)
     cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), self.cut_image)
     ###################################
-    # connectivity = ['']
-    connectivity = ''
+    connectivity = ['']
     if len(self.mid_id_list) != 0:
         mid_info_list = list()
         mid_used_hole = list()

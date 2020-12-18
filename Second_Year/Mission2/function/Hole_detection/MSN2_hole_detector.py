@@ -2,6 +2,7 @@
 import os, glob
 import sys
 import cv2
+import shutil
 import json
 import numpy as np
 import matplotlib
@@ -17,6 +18,13 @@ from calculate_dist import *
 class MSN2_hole_detector():
     def __init__(self, opt):
         self.opt = opt
+        directory = os.path.join(self.opt.intermediate_results_path, 'hole_detection_visualization')
+        if os.path.exists(directory):
+            shutil.rmtree(directory)
+            os.makedirs(directory)
+        else:
+            os.makedirs(directory)
+        
 
     def main_hole_detector(self, step_num, step_images, parts_info, connectors, mults, \
         mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid=False, used_parts=[], fasteners_loc={}):
@@ -62,7 +70,7 @@ class MSN2_hole_detector():
                     used_part_hole.append([new_id, matched_pose_new, []])
             else:
                 pass
-            step_info = used_part_hole+['']
+            step_info = used_part_hole+[['']]
             self.parts_info[step_num] = step_info
             self.hole_pairs[step_num] = []
             print(step_info)
@@ -81,8 +89,9 @@ class MSN2_hole_detector():
         part_RT_list = [x[1] for x in step_parts_info]
 
         self.new_id_list = [x for x in part_id_list if x not in self.mid_id_list]
-        part_holename_dict, part_holeInfo_dict = part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H, W, True, self.cut_image.copy(), used_parts=used_parts)
+        part_holename_dict, part_holeInfo_dict, hole_id_dict = part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H, W, True, self.cut_image.copy(), used_parts=used_parts)
         fastenerInfo_list = fastener_loader(self, self.cut_image.copy(), component_list, self.fasteners_loc)
+        part_holeInfo_dict_initial = part_holeInfo_dict.copy()
         
         if self.opt.temp and (self.step_num == 4 or self.step_num==5):
             connector_num = 2
@@ -94,6 +103,16 @@ class MSN2_hole_detector():
             part_holeInfo_temp = [x for x in part_holeInfo_temp_ if connector in x]
             part_holeInfo_dict[part_id] = part_holeInfo_temp.copy()
 
+        part_holeInfo_dict_up = {}
+        part_holeInfo_dict_down = {}
+        new_part_holeInfo_dict_up = {}
+        for key, val in part_holeInfo_dict.items():
+            val_temp = sorted(val,key=lambda x:x[2])
+            cut_idx = int(len(val_temp)/2)
+            part_holeInfo_dict_up[key] = val_temp[:cut_idx].copy()
+            part_holeInfo_dict_down[key] = val_temp[cut_idx:].copy()
+            if key in self.new_id_list:
+                new_part_holeInfo_dict_up[key] = val_temp[:cut_idx].copy()
         # 중간 산출물 단위로 묶어줌 --> 중간산출물 + 새로운 부품으로 나뉘어짐
         matched_pose_temp = {}
         for part_info in step_parts_info:
@@ -107,17 +126,12 @@ class MSN2_hole_detector():
         total_count = len(matched_pose_temp.keys()) # --> 큰 단위로, 2개 이상이면 결합 진행
 
         # 위에 있는 연결자 파악
-        if not self.opt.mission1:
-            connectors_loc = self.fasteners_loc[self.step_num][self.OCR_to_fastener[self.connector]]
+        connectors_loc = self.fasteners_loc[self.step_num][self.OCR_to_fastener[self.connector]]
+        self.use_connectors_loc = False
+        if len(connectors_loc) >= connector_num:
+            self.use_connectors_loc = True
             connectors_center = [x[1] for x in connectors_loc]
             part_up_connectors = {}
-            part_holeInfo_dict_up = {}
-            part_holeInfo_dict_down = {}
-            for key, val in part_holeInfo_dict.items():
-                val_temp = sorted(val,key=lambda x:x[2])
-                cut_idx = int(len(val_temp)/2)
-                part_holeInfo_dict_up[key] = val_temp[cut_idx:].copy()
-                part_holeInfo_dict_down[key] = val_temp[:cut_idx].copy()
             if self.connector == '101350':
                 for new_id in self.new_id_list:
                     if new_id != 'part5' and new_id != 'part6':
@@ -125,71 +139,102 @@ class MSN2_hole_detector():
                         new_id_holes = part_holeInfo_dict_up[new_id]
                         max_holes_x = max([x[1] for x in new_id_holes])
                         min_holes_x = min([x[1] for x in new_id_holes])
-                        min_holes_y = min([x[2] for x in new_id_holes])
+                        max_holes_y = max([x[2] for x in new_id_holes])
                         for connector_center in connectors_center:
-                            if connector_center[0] < max_holes_x + 100 and connector_center[0] > min_holes_x - 100 and connector_center[1] > min_holes_y-50:
+                            if connector_center[0] < max_holes_x + 100 and connector_center[0] > min_holes_x - 100 and connector_center[1] < max_holes_y+50:
                                 up_connectors.append(connector_center)
                                 part_up_connectors[new_id] = up_connectors.copy()
             up_connectors_num = sum([len(val) for key, val in part_up_connectors.items()])
 
-        if self.opt.mission1:
-            if self.connector == "101350":
-                connector_num = int(connector_num/2)
-            if (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0)) and self.connector != '122620' and self.connector != '122925':
-                step_info, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
-                self.parts_info[step_num] = step_info
-                self.hole_pairs[step_num] = hole_pairs
-                print(step_info)
+        if (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0) or len(self.new_id_list)>1) \
+            and self.connector != '122620' and self.connector != '122925' and self.connector != '101350':
+            step_info, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
+            # hole이 아예 없으면 임의로 넣어줌
+            
+            if len(step_info[-1][0]) != 0:
+                for i,partInfo in enumerate(step_info[:-1]):
+                    partname = partInfo[0]
+                    holeInfo = partInfo[2].copy()
+                    if len(holeInfo) == 0:
+                        hole_id_temp = part_holeInfo_dict_down[partname][-1][0]
+                        hole_id_dict_temp = hole_id_dict[partname]
+                        hole_id_position = hole_id_dict_temp.index(hole_id_temp)
+                        holename_temp = part_holename_dict[partname][hole_id_position]
+                        partInfo[-1] = [holename_temp]
+                        step_info[i] = partInfo.copy()
+            self.parts_info[step_num] = step_info
+            self.hole_pairs[step_num] = hole_pairs
+            print(step_info)
 
-            else:
-                step_info = point_matching(self,step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
-                self.parts_info[step_num] = step_info
-                self.hole_pairs[step_num] = []
-                print(step_info)
-
-        else:
-            # fastenerInfo_list = fastener_loader_v2(self, self.cut_image.copy(), part_holeInfo_dict, component_list, self.fasteners_loc)
-            if (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0) or len(self.new_id_list)>1) \
-                and self.connector != '122620' and self.connector != '122925' and self.connector != '101350':
-                step_info, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
-                self.parts_info[step_num] = step_info
-                self.hole_pairs[step_num] = hole_pairs
-                print(step_info)
-
-            elif (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0) or len(self.new_id_list)>1) and self.connector == "101350":
-                step_info_sub1 = point_matching(self,step_num, up_connectors_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
+        elif (total_count>1 or (len(self.mid_id_list)!=0 and len(self.new_id_list)!=0) or len(self.new_id_list)>1) and self.connector == "101350":
+            if self.use_connectors_loc:
+                step_info_sub1 = point_matching(self,step_num, up_connectors_num, fastenerInfo_list.copy(), new_part_holeInfo_dict_up.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
                 connector_num -= up_connectors_num
-                step_info_sub2, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
-                step_info = list()
-                for part1_info in step_info_sub1:
-                    for part2_info in step_info_sub2:
-                        if part1_info == '':
-                            continue
-                        else:
-                            part1_id = part1_info[0]
-                            part2_id = part2_info[0]
-                            if part1_id == part2_id:
-                                part1_RT = part1_info[1]
-                                new_info_holes = part1_info[2] + part2_info[2]
-                                step_info.append([part1_id, part1_RT,new_info_holes])
-                            else:
-                                step_info.append(part2_info)
-                if len(step_info) == 0:
-                    step_info = step_info_sub2
-                print(step_info)
-                self.parts_info[step_num] = step_info
-                self.hole_pairs[step_num] = hole_pairs
             else:
-                try:
-                    step_info = point_matching(self,step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
-                    self.parts_info[step_num] = step_info
-                    self.hole_pairs[step_num] = []
-                    print(step_info)
+                connector_num_temp = int(connector_num/2)
+                step_info_sub1 = point_matching(self,step_num, connector_num_temp, fastenerInfo_list.copy(), new_part_holeInfo_dict_up.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
+                matched_count = 0
+                for partInfo in step_info_sub1:
+                    if partInfo != ['']:
+                        matched_count += len(partInfo[2])
+                connector_num -= matched_count
+            step_info_sub2, hole_pairs = hole_pair_matching(self, step_num, connector_num, fastenerInfo_list.copy(), part_holeInfo_dict.copy(), part_holename_dict.copy(), step_parts_info.copy(), self.cut_image.copy())
+            step_info = list()
+            for part1_info in step_info_sub1:
+                for part2_info in step_info_sub2:
+                    if part1_info == ['']:
+                        continue
+                    else:
+                        part1_id = part1_info[0]
+                        part2_id = part2_info[0]
+                        if part1_id == part2_id:
+                            part1_RT = part1_info[1]
+                            new_info_holes = part1_info[2] + part2_info[2]
+                            step_info.append([part1_id, part1_RT,new_info_holes])
+                        else:
+                            step_info.append(part2_info)
+            if len(step_info) == 0:
+                step_info = step_info_sub2
 
-                except ValueError:
-                    step_info = [['part2', 8, ['part2_1-hole_8', 'part2_1-hole_7']], '']
-                    hole_pairs = []
+            # 체결 관계는 있는데 hole이 아예 없으면 넣어줌
+            if len(step_info[-1][0]) != 0:
+                for i,partInfo in enumerate(step_info[:-1]):
+                    partname = partInfo[0]
+                    holeInfo = partInfo[2].copy()
+                    if len(holeInfo) == 0:
+                        hole_id_temp = part_holeInfo_dict_down[partname][-1][0]
+                        hole_id_dict_temp = hole_id_dict[partname]
+                        hole_id_position = hole_id_dict_temp.index(hole_id_temp)
+                        holename_temp = part_holename_dict[partname][hole_id_position]
+                        partInfo[-1] = [holename_temp]
+                        step_info[i] = partInfo.copy()
+            self.parts_info[step_num] = step_info
+            self.hole_pairs[step_num] = hole_pairs
+            print(step_info)
+        else:
+            step_info = point_matching(self,step_num, connector_num, fastenerInfo_list, part_holeInfo_dict, part_holename_dict, step_parts_info, self.cut_image.copy())
+            # hole이 아예 없으면 임의로 넣어줌
+            if len(step_info[-1][0]) != 0:
+                for i,partInfo in enumerate(step_info[:-1]):
+                    partname = partInfo[0]
+                    holeInfo = partInfo[2].copy()
+                    if len(holeInfo) == 0:
+                        hole_id_temp = part_holeInfo_dict_down[partname][-1][0]
+                        hole_id_dict_temp = hole_id_dict[partname]
+                        hole_id_position = hole_id_dict_temp.index(hole_id_temp)
+                        holename_temp = part_holename_dict[partname][hole_id_position]
+                        partInfo[-1] = [holename_temp]
+                        step_info[i] = partInfo.copy()
+            self.parts_info[step_num] = step_info
+            self.hole_pairs[step_num] = []
+            print(step_info)
         return self.parts_info, self.hole_pairs
 
     def closest_gt_RT_index(self, RT_pred):
-            return np.argmin([np.linalg.norm(RT - RT_pred) for RT in self.RTs_dict])
+        def R_distance(RT1, RT2):
+            R1 = RT1[:, :3]
+            R2 = RT2[:, :3]
+            R = R1.T @ R2
+            theta = np.rad2deg(np.arccos((np.trace(R) - 1)/2))
+            return theta
+        return np.argmin([R_distance(RT, RT_pred) for RT in self.RTs_dict])

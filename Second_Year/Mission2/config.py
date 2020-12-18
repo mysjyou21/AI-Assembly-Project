@@ -15,8 +15,6 @@ def parse_args(description='Robot'):
     parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission2'))
     parser.add_argument('--fastener_model_path', default=os.path.join('./model', 'fastener', 'mission2'))
 
-    parser.add_argument('--mission1', type=str2bool, default=False)
-    parser.add_argument('--temp_settings', type=str2bool, default=False)
     parser.add_argument('--output_dir', default='./output')
     parser.add_argument('--eval_print', type=str2bool, default=False)
     parser.add_argument('--save_detection', type=str2bool, default=True)
@@ -29,6 +27,8 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_mult', type=str2bool, default=True)
     parser.add_argument('--save_mult_npy', type=str2bool, default=False)
     parser.add_argument('--save_mult_black', type=str2bool, default=False)
+    parser.add_argument('--save_circle', type=str2bool, default=False)
+    parser.add_argument('--save_rectangle', type=str2bool, default=False)
     parser.add_argument('--save_group_image', type=str2bool, default=True)
     parser.add_argument('--save_part_image', type=str2bool, default=True)
     parser.add_argument('--save_pose_prediction_maps', type=str2bool, default=True)
@@ -44,7 +44,6 @@ def parse_args(description='Robot'):
 
     ############# temp ###########
     parser.add_argument('--temp', type=str2bool, default=False)
-    parser.add_argument('--temp_pose', type=str2bool, default=False)
     ###############################
     parser.add_argument('--blender', default='blender')
 
@@ -110,6 +109,9 @@ def init_args(description='Robot'):
     opt.save_mult_black = str2bool(opt.save_mult_black)
     opt.print_serial_progress = str2bool(opt.print_serial_progress)
     opt.save_mult_black = str2bool(opt.save_mult_black)
+    opt.save_detection = str2bool(opt.save_detection)
+    opt.save_circle = str2bool(opt.save_circle)
+    opt.save_rectangle = str2bool(opt.save_rectangle)
     opt.save_group_image = str2bool(opt.save_group_image)
     opt.save_part_image = str2bool(opt.save_part_image)
     opt.save_pose_prediction_maps = str2bool(opt.save_pose_prediction_maps)

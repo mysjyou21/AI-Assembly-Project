@@ -51,20 +51,8 @@ class InitialPoseEstimation():
         with args.graph_pose.as_default():
             sess = args.sess_pose
             self.model = CorrespondenceBlockModel(3, 9, 256) # in channels, id channels, uvw channels
-            if args.mission1:
-                if args.opt.temp_pose:
-                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan_temp.pt')
-                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan_temp.pt', map_location='cuda:0')    
-                else:
-                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_stefan.pt')
-                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_stefan.pt', map_location='cuda:0')
-            else:
-                if args.opt.temp_pose:
-                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block_temp.pt')
-                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block_temp.pt', map_location='cuda:0')
-                else:
-                    print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
-                    checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0')
+            print('POSE MODEL : Loading saved model from', self.checkpoint_path + '/correspondence_block.pt')
+            checkpoint = torch.load(self.checkpoint_path + '/correspondence_block.pt', map_location='cuda:0') 
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.model.eval()
             self.model.cuda(0)
@@ -300,7 +288,6 @@ class InitialPoseEstimation():
                     if args.opt.save_pose_prediction_maps:
                         cv2.imwrite(save_path + '/STEP{}_ID_3.png'.format(step_num), ID_new_modified_color)
                     print('Added "New" at step {} : part{} (part0 means none added)'.format(step_num, max_pixels_look_up_part_id)) #blue
-                    # print('pixel counts : {}'.format(max_pixels)) #blue
 
                     # update self.used_parst, self.unused_parts, self.cad_models
                     if max_pixels_look_up_part_id != 0:
@@ -317,23 +304,46 @@ class InitialPoseEstimation():
                 ID = ID_new_modified
 
             # PnP
-            args.pose_save_dict['000000'][str(step_num).zfill(6)] = []
             args.pose_return_dict[step_num] = []
 
             obj_ids = [args.cad_names.index(model) + 1 for model in cad_models]
+            R_list = []
             for obj_id in obj_ids:
                 R, T = self.PnP(obj_id, ID, U, V, W, args.K)
+                R_list.append(R)
                 RT = np.concatenate((R, T), axis=1)
                 args.pose_return_dict[step_num].append(RT)
-                temp_dict = {}
-                temp_dict["cam_R_m2c"] = R.flatten().tolist()
-                temp_dict["cam_t_m2c"] = T.flatten().tolist()
-                temp_dict["obj_id"] = obj_id
-                args.pose_save_dict['000000'][str(step_num).zfill(6)].append(temp_dict)
-            if not os.path.exists(os.path.dirname(args.opt.initial_pose_estimation_adr)):
-                os.makedirs(os.path.dirname(args.opt.initial_pose_estimation_adr))
-            with open(args.opt.initial_pose_estimation_adr, 'w') as f:
-                json.dump(args.pose_save_dict, f, indent=2, sort_keys=True)
+
+            modifier_matrix = np.array([1, 1, -1, 1, 1, 1, -1, 1, -1, -1, 1, 1]).reshape(3, 4)
+
+            # Post process PnP (z-axis flipped issue step1)
+            if len(set(obj_ids) - {2, 3, 7, 8}) == 0:
+                for idx in range(len(args.pose_return_dict[step_num])):
+                    z_direction = R_list[idx] @ np.array([0, 0, 1]).reshape(-1, 1)
+                    z_direction = z_direction[1, 0]
+                    if z_direction > 0: # z_axis heading down
+                        args.pose_return_dict[step_num][idx] *= modifier_matrix
+
+            # Post process PnP (z-axis flipped issue)
+            R_base = None # If part5 or part6 is detected, set their pose as base_pose
+            if 5 in obj_ids:
+                R_base = R_list[obj_ids.index(5)]
+            if 6 in obj_ids:
+                R_base = R_list[obj_ids.index(6)]
+            if R_base is not None:
+                def z_axis_angle_diff(R1, R2):
+                    z1 = R1 @ np.array([0, 0, 1]).reshape(-1, 1)
+                    z2 = R2 @ np.array([0, 0, 1]).reshape(-1, 1)
+                    z1_norm = np.linalg.norm(z1)
+                    z2_norm = np.linalg.norm(z2)
+                    return np.inner(z1.flatten(), z2.flatten()) / (z1_norm * z2_norm)
+                z_dist_list = [z_axis_angle_diff(R_base, R) for R in R_list]
+                for idx in range(len(args.pose_return_dict[step_num])):
+                    z_dist = z_dist_list[idx]
+                    obj_id = obj_ids[idx]
+                    if obj_id in [1, 2, 3, 7, 8]: # for objects that z-axis is often flipped
+                        if np.abs(z_dist - 0.5) < 0.26 or np.abs(z_dist + 0.5) < 0.26 :
+                            args.pose_return_dict[step_num][idx] *= modifier_matrix
 
 
     def PnP(self, obj_id, ID, U, V, W, K):
@@ -365,7 +375,14 @@ class InitialPoseEstimation():
         mapping_2d = np.array(mapping_2d).astype(np.float32)
         mapping_3d = np.array(mapping_3d).astype(np.float32)
         if len(mapping_2d) >= 6 or len(mapping_3d) > 6:
-            _, rvecs, tvecs, inliers = cv2.solvePnPRansac(mapping_3d, mapping_2d, K, distCoeffs=None, iterationsCount=300, reprojectionError=1.2, flags=cv2.SOLVEPNP_EPNP)
+            _, rvecs, tvecs, inliers = cv2.solvePnPRansac(mapping_3d, mapping_2d, K, distCoeffs=None,
+                iterationsCount=300, reprojectionError=1.2, flags=1)
+            ''' flags
+            0 : iterative
+            1 : epnp
+            2 : p3p
+            5 : ap3p
+            '''
             rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
             return rot, tvecs
         else:
@@ -458,38 +475,40 @@ class InitialPoseEstimation():
 
 
     def save_part_id_pose(self, args, step_num, matched_poses):
-        cad_models = args.cad_models[step_num]
-        part_imgs = args.parts_bboxed[step_num]
-        for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
-            plt.imsave(args.opt.part_id_pose_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img)
-            plt.clf()
-            plt.figure(figsize=(4, 4))
-            plt.axis('off')
-            pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
-            plt.imshow(pose_img)
-            plt.title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
-            if not os.path.exists(args.opt.part_id_pose_path):
-                os.makedirs(args.opt.part_id_pose_path)
-            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}_pose'.format(step_num, i))
-            plt.close()
+        if args.opt.save_part_id_pose:
+            cad_models = args.cad_models[step_num]
+            part_imgs = args.parts_bboxed[step_num]
+            for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
+                plt.imsave(args.opt.part_id_pose_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img)
+                plt.clf()
+                plt.figure(figsize=(4, 4))
+                plt.axis('off')
+                pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
+                plt.imshow(pose_img)
+                plt.title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
+                if not os.path.exists(args.opt.part_id_pose_path):
+                    os.makedirs(args.opt.part_id_pose_path)
+                plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}_pose'.format(step_num, i))
+                plt.close()
     '''
 
     def save_part_id_pose(self, args, step_num, matched_poses):
-        cad_models = args.cad_models[step_num]
-        part_imgs = args.parts[step_num]
-        for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
-            plt.clf()
-            fig, ax = plt.subplots(1, 2, sharey=True)
-            part_img = self.resize_and_pad(part_img)
-            ax[0].imshow(part_img)
-            ax[0].set_title('detection result')
-            pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
-            ax[1].imshow(pose_img)
-            ax[1].set_title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
-            if not os.path.exists(args.opt.part_id_pose_path):
-                os.makedirs(args.opt.part_id_pose_path)
-            plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i))
-            plt.close()
+        if args.opt.save_part_id_pose:
+            cad_models = args.cad_models[step_num]
+            part_imgs = args.parts[step_num]
+            for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
+                plt.clf()
+                fig, ax = plt.subplots(1, 2, sharey=True)
+                part_img = self.resize_and_pad(part_img)
+                ax[0].imshow(part_img)
+                ax[0].set_title('detection result')
+                pose_img = args.VIEW_IMGS[args.cad_names.index(cad_model)][matched_pose]
+                ax[1].imshow(pose_img)
+                ax[1].set_title('pred cad : {}\npred pose : {}'.format(cad_model, matched_pose))
+                if not os.path.exists(args.opt.part_id_pose_path):
+                    os.makedirs(args.opt.part_id_pose_path)
+                plt.savefig(args.opt.part_id_pose_path + '/STEP{}_part{}'.format(step_num, i))
+                plt.close()
 
     
     def resize_and_pad(self, img, a=150):

@@ -160,12 +160,6 @@ def circle_detect(self, I, index, param1=80, param2=83, ratio_threshold=0.2):
     for i in range(len(loc)):
         loc[i][-1] = u_inverse[i]
 
-    # draw circles
-    for x, y, w, h, _ in loc:
-        cv.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-    cv.imwrite(os.path.join(self.opt.circle_path, 'circle_%d.png' % index), img)
-
     return loc
 
 
@@ -360,12 +354,5 @@ def rectangle_detect(self, I, i):
             to_be_deleted.append(rectangle)
     for rectangle in to_be_deleted:
         loc.remove(rectangle)
-
-    # save images
-    for rectangle in loc:
-        x1, y1, w, h = rectangle
-        x2, y2 = x1 + w, y1 + h
-        cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
-    cv.imwrite(os.path.join(self.opt.rectangle_path, 'rectangle_%d.png' % i), img)
 
     return loc

@@ -12,6 +12,7 @@ from hole_loader import *
 def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H, W, debug_mode=False, debug_img=None, used_parts=[]):
     part_holeInfo_dict = {}
     part_holename_dict = {}
+    hole_id_dict = {}
     step_name = 'step' + str(step_num-1)
     for part_idx, part_id in enumerate(part_id_list):
         if part_id in self.mid_id_list:
@@ -31,11 +32,9 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
                 else:
                     hole_id = [int(x.split("_")[-1]) for x in holename]
             except KeyError:
-                holename = []
+                holename = ['-1']
                 hole_id = [-1]
                 hole_XYZ = np.array([[0.0,0.0,0.0]])
-            # if step_num == 5:
-            #     import ipdb; ipdb.set_trace()
 
         else:
             hole_XYZ, holename = base_loader(part_id, self.opt.hole_path_2, self.opt.cad_path)
@@ -48,6 +47,7 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
                 hole_id = hole_id1 + hole_id2
             else:
                 hole_id = [int(x.split("_")[-1]) for x in holename]
+        hole_id_dict[part_id] = hole_id.copy()
         RT = part_RT_list[part_idx]
         hole_x, hole_y = project_points(
             hole_XYZ, K, RT, H, W)
@@ -74,7 +74,7 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
         cv2.imwrite(os.path.join(self.v_dir, str(self.step_num) + '_hole_check.png'), debug_img)
     #########################
 
-    return part_holename_dict, part_holeInfo_dict
+    return part_holename_dict, part_holeInfo_dict, hole_id_dict
 
 def project_points(points, K, RT, H, W):
     ones = np.ones((points.shape[0], 1))

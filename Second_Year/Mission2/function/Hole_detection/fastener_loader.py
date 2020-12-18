@@ -35,7 +35,7 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
     horizon_erase = cv2.dilate(horizon_erase_sub,horizon_eraser,iterations=10)
     vertical_lines = horizon_erase.copy()
         
-    if not self.opt.mission1:
+    if self.opt.temp:
         for loc in used_fasteners_loc:
             lx = loc[0][0]
             ly = loc[0][1]
@@ -44,7 +44,6 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
             vertical_lines[ly:ly+lh-5,lx-50:lx+lw+50] = 0
 
     sub_comb = vertical_lines.copy()
-    # kernel_cc = [[1,1,1],[1,1,1],[1,1,1]]
     labeled_fastener, num = ndimage.label(sub_comb)
     obj_fastener = ndimage.find_objects(labeled_fastener)
 
@@ -59,8 +58,6 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
         h_list.append(h_obj)
         w_list.append(w_obj)
 
-        # if h_obj <= 30 and i in candidates_fastener:
-        #     candidates_fastener.remove(i)
         if h_obj >= 300 and i in candidates_fastener:
             candidates_fastener.remove(i)
 
@@ -90,17 +87,12 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                         if x_mean <= x1 or x_mean >= x2 or y_end <= y1 or y_start >= y2:
                             continue
                         else:
-                            fastenerInfo = [filterd_fastener_id,(x_mean,y_start),(x_mean,y_end+20)]
+                            fastenerInfo = [filterd_fastener_id,(x_mean,y_start),(x_mean,y_end)]
                             fastenerInfo_list.append(fastenerInfo.copy())
                             filterd_fastener_id += 1
                             count += 1
-
-                            ##### visualization #####
-                            region = labeled_fastener[y_start:y_end, x_start:x_end]
-                            region = ((region==candidates_fastener[i])*255).astype(np.uint8)
-                            fastener_img[y_start:y_end, x_start:x_end] += region
                     elif self.connector =="104322":
-                        if self.opt.mission1:
+                        if not self.opt.temp:
                             x1 = loc[0][0] - 50
                             x2 = loc[0][0] + loc[0][2] + 50
                             y1 = loc[0][1] - 50
@@ -111,11 +103,6 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                                 fastenerInfo_list.append(fastenerInfo.copy())
                                 filterd_fastener_id += 1
                                 count += 1
-
-                                ##### visualization #####
-                                region = labeled_fastener[y_start:y_end, x_start:x_end]
-                                region = ((region==candidates_fastener[i])*255).astype(np.uint8)
-                                fastener_img[y_start:y_end, x_start:x_end] += region
                         else:
                             y_length = abs(y_end - y_start)
                             x1 = loc[0][0]
@@ -123,7 +110,7 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                             y1 = loc[0][1]
                             y2 = loc[0][1] + loc[0][3]
                             if self.opt.temp and (self.step_num == 4 or self.step_num==5):
-                                if x2 > 1200:
+                                if x2 > 1000:
                                     continue
                             if x_mean <= x1 or x_mean >= x2 or y_end <= y1:
                                 continue
@@ -133,11 +120,6 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                                     fastenerInfo_list.append(fastenerInfo.copy())
                                     filterd_fastener_id += 1
                                     count += 1
-
-                                    ##### visualization #####
-                                    region = labeled_fastener[y_start:y_end, x_start:x_end]
-                                    region = ((region==candidates_fastener[i])*255).astype(np.uint8)
-                                    fastener_img[y_start:y_end, x_start:x_end] += region
                     else:
                         x1 = loc[0][0] - 50
                         x2 = loc[0][0] + loc[0][2] + 50
@@ -150,11 +132,10 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
                             fastenerInfo_list.append(fastenerInfo.copy())
                             filterd_fastener_id += 1
                             count += 1
-
-                            ##### visualization #####
-                            region = labeled_fastener[y_start:y_end, x_start:x_end]
-                            region = ((region==candidates_fastener[i])*255).astype(np.uint8)
-                            fastener_img[y_start:y_end, x_start:x_end] += region
+                    ##### visualization #####
+                    region = labeled_fastener[y_start:y_end, x_start:x_end]
+                    region = ((region==candidates_fastener[i])*255).astype(np.uint8)
+                    fastener_img[y_start:y_end, x_start:x_end] += region
 
         else:
             fastenerInfo = [filterd_fastener_id,(x_mean,y_start),(x_mean,y_end)]
