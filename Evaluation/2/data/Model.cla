@@ -1,0 +1,36 @@
+eval 1
+11 11
+
+IVAR_part2 0 1
+IVAR_part2
+
+IVAR_step3 0 1
+IVAR_step3
+
+IVAR_step5 0 1
+IVAR_step5
+
+STEFAN_step2 0 1
+STEFAN_step2
+
+STEFAN_step3 0 1
+STEFAN_step3
+
+STEFAN_step4 0 1
+STEFAN_step4
+
+STEFAN_step8 0 1
+STEFAN_step8
+
+STEFAN_part1 0 1
+STEFAN_part1
+
+STEFAN_part2 0 1
+STEFAN_part2
+
+STEFAN_part4 0 1
+STEFAN_part4
+
+STEFAN_part5 0 1
+STEFAN_part5
+

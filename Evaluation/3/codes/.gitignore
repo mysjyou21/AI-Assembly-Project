@@ -1,0 +1,4 @@
+*.pyc
+model/
+data/
+intermediate_results/

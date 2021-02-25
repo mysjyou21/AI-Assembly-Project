@@ -1,0 +1,4 @@
+Guidance_Circle 146 1672 615 2139
+Guidance_Circle 841 1687 1314 2156
+Parts 476 694 1132 1413
+Parts 462 1281 1085 1555
