@@ -8,7 +8,7 @@
 * IKEARobot.zip
 
               function/Pose/data 폴더를 Second_Year/function/Pose/data로 옮김
-              model 폴더를 Second_Year/model로 옮김
+              model 폴더를 Second_Year/Mission2/model로 옮김
 
 * Evaluation.zip
 
