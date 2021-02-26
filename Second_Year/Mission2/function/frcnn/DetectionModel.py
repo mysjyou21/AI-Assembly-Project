@@ -173,10 +173,9 @@ class DetectionModel():
 
         return components_dict
 
+    def test_for_parts(self, img, parts_threshold, step_num=None):
 
-    def test_for_parts(self, img, step_num=None):
-
-        bbox_threshold = 0.8
+        bbox_threshold = parts_threshold
 
         X, ratio = self.format_img(img)
         if K.image_dim_ordering() == 'tf':

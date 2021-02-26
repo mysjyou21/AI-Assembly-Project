@@ -30,6 +30,7 @@ def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
         print('MID CHECKED: %s and %s : %.4f'%(mp1, mp2, min_dist))
         mid_RT = mid_RT1
         find_mid = True
+        mid_checked = [mp1, mp2]
 
     ######## 중간산출물을 이루는 기본부품간의 pose가 일치하는게 없을시, 중간산출물을 이루는 아무 파트중 하나의 pose로 통일 ####
     if not find_mid and len(mid_base) > 0:
@@ -38,10 +39,11 @@ def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
                 id = prior
                 mid_RT = holepair_to_RT(base_hole_dict[id], mid_hole_dict[id])
                 find_mid = True
+                mid_checked = [id]
                 print('MID UNCHECKED: %s'%id)
                 break
 
-    return mid_RT, mid_id_list, find_mid
+    return mid_RT, mid_id_list, find_mid, mid_checked
 
 
 

@@ -38,7 +38,18 @@ def mid_loader(step_name, json_path, center_dir, scale=100, used_parts=[]):
         if not part7_exist and not part8_exist:
             part7_exist = 1 if 7 in used_parts else 0
             part8_exist = 1 if 8 in used_parts else 0
-    if part7_exist and part8_exist:
+        if (part7_exist and part8_exist) and (not os.path.exists('%s/%s.json'%(json_path, 'step1_a'))) and ('cad_info2' in json_path): #FALSE PART7 or 8, in cad_info2
+            part7_exist = 0
+            part8_exist = 0
+            json_path_ref = json_path.replace('cad_info2', 'cad_info')
+            with open('%s/%s.json'%(json_path_ref, step_name), 'r') as f:
+                part_temp_data = json.load(f)
+            if len([x for x in part_temp_data["data"]["hole"].keys() if 'part2_1' in x])>0:
+                part7_exist = 1
+            if len([x for x in part_temp_data["data"]["hole"].keys() if 'part3_1' in x])>0:
+                part8_exist = 1
+
+    if part7_exist and part8_exist: # ONLY TRUE PART7,8
         with open('%s/%s.json'%(json_path, 'step1_b'), 'r') as f:
             part7_data = json.load(f)['data']
         with open('%s/%s.json'%(json_path, 'step1_a'), 'r') as f:
@@ -50,7 +61,7 @@ def mid_loader(step_name, json_path, center_dir, scale=100, used_parts=[]):
         part8_Cind = list(set(part7_Cind))
 
         id_list = [x.replace('_1','') if 'C122620' not in x else 'part7' if x in part7_Cind else 'part8' for x in id_list]
-    elif part7_exist or part8_exist:
+    elif part7_exist or part8_exist: # PART7 or PART8 or FP PART7/8
         amb_id = 'part7' if part7_exist else 'part8'
         id_list = [x.replace('_1','') if 'C122620' not in x else amb_id for x in id_list]
     else:

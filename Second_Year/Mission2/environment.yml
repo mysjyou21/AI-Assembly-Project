@@ -73,7 +73,6 @@ dependencies:
     - numpy==1.14.2
     - opencv-contrib-python==3.4.0.12
     - opencv-python==3.4.2.16
-    - opendr==0.73
     - parso==0.7.0
     - pexpect==4.8.0
     - pickleshare==0.7.5

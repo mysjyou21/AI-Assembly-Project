@@ -1,5 +1,7 @@
 """ cut: png image, step: a step corresponds to a step number, a cut can consist of multiple steps
 Caution: Class 변수 추가할 때, __init__에 적어주기(모두가 어떤 variable이 있는지 쉽게 파악하게 하기위해) """
+import os
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 import sys
 
@@ -39,6 +41,7 @@ class Assembly():
         self.cut_names = []
         self.steps = {}
         self.num_steps = 0
+        
 
         gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
         config = tf.ConfigProto(gpu_options = gpu_options)
@@ -84,6 +87,7 @@ class Assembly():
         self.parts = {}  # detected part images {step_num  : list of part images}
         self.parts_bboxed = {}  # detected part images shown as bbox on whole image {step_num  : list of part images}
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
+        self.mid_base = {} # {step_num: [base parts which consist of mid part]}
         
         # component recognition results, string
         self.connectors_serial_OCR = {}
@@ -95,6 +99,8 @@ class Assembly():
         # Pose variables
         self.cad_models = {}  # names of cad models of retrieval results
         self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
+        self.part_write = {} # closest gt RT of parts, along with mid-pose info. {step_num : { part# : ['closest RT index', 'mid_pose info']}}
+        self.pose_indiv = {} # isaac : closest gt RT of parts {step_num : { part# : ['closest RT index', 'added in pose module : True == 1, False == 0', 'New part : True == 1, False == 0']}}
         self.cad_names = ['part1', 'part2', 'part3', 'part4', 'part5', 'part6', 'part7', 'part8']
         self.K = np.array([
             3444.4443359375,0.0,874.0,
@@ -320,9 +326,9 @@ class Assembly():
 
         components_dict1 = self.detect_model1.test_for_components(step_img)
         if self.opt.temp:
-            components_dict2 = self.detect_model2.test_for_parts(step_img, step_num)  # temp
+            components_dict2 = self.detect_model2.test_for_parts(step_img, parts_threshold=self.opt.parts_threshold, step_num=step_num)  # temp
         else:
-            components_dict2 = self.detect_model2.test_for_parts(step_img)            # temp
+            components_dict2 = self.detect_model2.test_for_parts(step_img, parts_threshold=self.opt.parts_threshold)    # temp
 
         # print(components_dict1)
         # print(components_dict2)
@@ -335,6 +341,15 @@ class Assembly():
         tools = components_dict1['Tool']
         part_ids = sorted(list(components_dict2.keys()))
         part_ids.remove('bg')
+
+        # 첫 번째 step 제외한 모든 step 에 대해,
+        # part7(또는 part8)이 검출됐는데 첫 번째 step 에 part2(또는 part3) 이 없으면 오검출로 간주
+        if step_num != 1:
+            if 2 not in self.used_parts[1] and '7' in part_ids:
+                part_ids.remove('7')
+            if 3 not in self.used_parts[1] and '8' in part_ids:
+                part_ids.remove('8')
+
         parts = []
         for key in part_ids:
             parts += components_dict2[key]
@@ -529,6 +544,7 @@ class Assembly():
         assert len(self.parts[step_num]) == len(self.cad_models[step_num]), "length of retrieval input/output doesn't match"
         print('')
         print('classified classes : ', self.cad_models[step_num]) #blue
+        parts = self.cad_models[step_num].copy()
 
         # pose prediction
         # update self.pose_return_dict, self.cad_models
@@ -557,9 +573,36 @@ class Assembly():
         # individual parts pose visualization
         self.pose_model.save_part_id_pose(self, step_num, matched_poses)
 
-        print('modified classified classes : ', self.cad_models[step_num]) #blue
+        parts_modified = self.cad_models[step_num].copy()
+        print('modified classified classes : ', parts_modified) #blue
         print('matched_poses', matched_poses) #blue
 
+        # update self.part_write
+        step_part_write_dict = {}
+        for part_name, matched_pose in zip(parts_modified, matched_poses):
+            matched_pose_list = []
+            matched_pose_list.append(int(matched_pose))
+            step_part_write_dict[part_name] = matched_pose_list
+        self.part_write[step_num] = step_part_write_dict
+
+        # update self.pose_indiv
+        step_part_write_dict = {}
+        for part_name, matched_pose in zip(parts_modified, matched_poses):
+            matched_pose_list = []
+            matched_pose_list.append(int(matched_pose))
+            added_in_pose_module = 1 if part_name not in parts else 0
+            matched_pose_list.append(int(added_in_pose_module))
+            step_part_write_dict[part_name] = matched_pose_list
+        self.pose_indiv[step_num] = step_part_write_dict
+
+        # save pose indiv
+        # json file for inidividual pose comparison with gt
+        if self.opt.save_pose_indiv:
+            try:
+                with open('./isaac/check_pose_indiv/predict/' + self.opt.assembly_name + '.json', 'w') as f:
+                    json.dump(self.pose_indiv, f, indent=2, sort_keys=True)
+            except:
+                pass
 
     def fastener_detector(self, step_num):
         """ Fastener detection
@@ -930,6 +973,51 @@ class Assembly():
         f.close()
         self.actions[step_num] = self.step_action
 
+        ########## print_pred ########
+        if self.opt.print_pred:
+            if self.opt.pred_dir is None: self.opt.pred_dir = os.path.join(self.opt.output_dir, 'pred')
+            if step_num == 1:
+                if os.path.exists(self.opt.pred_dir):
+                    shutil.rmtree(self.opt.pred_dir)
+            if not os.path.exists(self.opt.pred_dir):
+                os.makedirs(self.opt.pred_dir)
+
+            pred_dic = copy.deepcopy(step_dic)
+            mid_name = 'step%s' % str(step_num-1)
+
+            for i in range(len(pred_dic)-2):
+                Action_dic = copy.deepcopy(pred_dic['Action%s' % str(i)])
+                for a in range(0,4):
+                    if Action_dic['Part%s' % str(a)]=={}: pass
+                    else:
+                        part_original = copy.deepcopy(Action_dic['Part%s' % str(a)])
+                        part_changed = OrderedDict()
+                        part_changed['label'] = part_original['label']
+
+                        if part_original['label'] == mid_name: ## 중간산출물인 경우 (2개인 경우는 고려 X)
+                            sub_part_dic = OrderedDict()
+                            for part_name in self.mid_base[step_num]:
+                                if part_name in self.part_write[step_num].keys():
+                                    sub_part_dic[part_name] = [str(pose) for pose in self.part_write[step_num][part_name]]
+
+                        else: ## 기본부품일 경우
+                            sub_part_dic = OrderedDict()
+                            part_name = part_original['label']
+                            sub_part_dic[part_name] = [str(pose) for pose in self.part_write[step_num][part_name]]
+
+                        part_changed['sub_part'] = sub_part_dic
+                        part_changed['#'] = part_original["#"]
+                        part_changed['hole'] = part_original['hole']
+
+                        Action_dic['Part%s' % str(a)] = part_changed
+
+
+                pred_dic['Action%s' % str(i)] = Action_dic
+
+            f = open(os.path.join(self.opt.pred_dir, 'mission_%s.json' % str(step_num)), 'w')
+            json.dump(pred_dic, f, indent=2)
+            f.close()
+
     def group_RT_mid(self, step_num):
         ######### detection에서 검출된 기본부품의 pose 반영 hole 위치 #######
         base_RT_list = self.pose_return_dict[step_num]
@@ -949,13 +1037,19 @@ class Assembly():
         ######## 중간산출물 hole 위치 loading  ##########
         mid_hole_dict, _ = mid_loader('step%i'%(step_num-1), self.opt.hole_path, self.opt.cad_path)
 
-        mid_RT, mid_id_list, find_mid = baseRT_to_midRT(base_hole_dict, mid_hole_dict)
+        mid_RT, mid_id_list, find_mid, mid_checked = baseRT_to_midRT(base_hole_dict, mid_hole_dict)
 
         self.find_mid = find_mid
         self.mid_id_list = mid_id_list
         self.mid_RT = mid_RT
 
         if find_mid:
+            for key in self.part_write[step_num]:
+                if key in mid_checked:
+                    self.part_write[step_num][key] += [1]
+                else:
+                    self.part_write[step_num][key] += [0]
+                    
             for key in mid_id_list:
                 if key in base_id_list:
                     idx = base_id_list.index(key)
@@ -967,7 +1061,7 @@ class Assembly():
             self.pose_return_dict[step_num] = base_RT_list
             self.parts_info[step_num] = list(zip(base_id_list, base_RT_list))
         else:
-            pass
+            self.parts_info[step_num] = list(zip(base_id_list, base_RT_list))
 
 
     def msn2_hole_detector(self, step_num):
@@ -1027,12 +1121,14 @@ class Assembly():
 
             parts_info = self.parts_info
             hole_pairs = self.hole_pairs
+            mid_base = self.mid_base
 
-            parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, used_parts=self.used_parts[step_num-1], fasteners_loc=self.fasteners_loc)
+            parts_info, hole_pairs, mid_base = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, mid_base, find_mid, used_parts=self.used_parts[step_num-1], fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs
+            self.mid_base = mid_base
         else:
             find_mid = False
             K = self.K
@@ -1051,10 +1147,12 @@ class Assembly():
             self.parts_info[step_num] = parts_info_list.copy()
             parts_info = self.parts_info
             hole_pairs = self.hole_pairs
+            mid_base = self.mid_base
 
-            parts_info, hole_pairs = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
-            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, find_mid, fasteners_loc=self.fasteners_loc)
+            parts_info, hole_pairs, mid_base = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, mid_base, find_mid, fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info
             self.hole_pairs = hole_pairs
+            self.mid_base = mid_base
 

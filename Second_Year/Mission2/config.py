@@ -9,10 +9,12 @@ def parse_args(description='Robot'):
     parser.add_argument('--intermediate_results_path', default='./intermediate_results')
     parser.add_argument('--det_config1_name', default='./model/detection/fine_tuned/12.pickle')
     parser.add_argument('--det_config2_name', default='./model/detection/mission2/parts.pickle')
+    parser.add_argument('--parts_threshold', default=0.8, type=float, help='confidence threshold value for parts detection')
     parser.add_argument('--ocr_flip_weight_path', default=os.path.join('./model', 'OCR', 'flip_weight'))
     parser.add_argument('--ocr_class_weight_path', default=os.path.join('./model', 'OCR', 'weight'))
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
     parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission2'))
+    parser.add_argument('--pose_model_adr', default='', help='If defined, overrides pose_model_path')
     parser.add_argument('--fastener_model_path', default=os.path.join('./model', 'fastener', 'mission2'))
 
     parser.add_argument('--output_dir', default='./output')
@@ -41,10 +43,19 @@ def parse_args(description='Robot'):
     parser.add_argument('--print_time', type=str2bool, default=False)
     parser.add_argument('--mid_RT_on', type=str2bool, default=True)
     parser.add_argument('--hole_detection_on', type=str2bool, default=True)
+    parser.add_argument('--use_fine_tuned_model_detection', type=str2bool, default=True)
+    parser.add_argument('--use_fine_tuned_model_pose', type=str2bool, default=True)
+    parser.add_argument('--save_pose_indiv', type=str2bool, default=False)
+    parser.add_argument('--print_z_axis_flip', type=str2bool, default=False)
+    parser.add_argument('--pose_interpolation', default='nearest', help='[nearest, area]')
 
     ############# temp ###########
     parser.add_argument('--temp', type=str2bool, default=False)
     ###############################
+    ######### print_pred ###########
+    parser.add_argument('--print_pred', type=str2bool, default=False)
+    parser.add_argument('--pred_dir', default=None)
+    ################################
     parser.add_argument('--blender', default='blender')
 
     parser.add_argument('--step_num', default=False, type=int)
@@ -118,6 +129,12 @@ def init_args(description='Robot'):
     opt.save_part_id_pose = str2bool(opt.save_part_id_pose)
     opt.mid_RT_on = str2bool(opt.mid_RT_on)
     opt.hole_detection_on = str2bool(opt.hole_detection_on)
+    opt.use_fine_tuned_model_detection = str2bool(opt.use_fine_tuned_model_detection)
+
+    if not opt.use_fine_tuned_model_detection:
+        opt.det_config2_name = './model/detection/mission2/parts_nft.pickle'
+    if not opt.use_fine_tuned_model_pose:
+        opt.pose_model_name = 'correspondence_block_not_finetuned.pt'
 
     ####### Temp ########
     opt.temp = str2bool(opt.temp)
