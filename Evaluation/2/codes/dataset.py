@@ -10,11 +10,10 @@ from utils import load_classfile_str, transform
 from random import shuffle, randrange
 
 class Dataset(object):
-    def __init__(self, DATA_DIR, view_num=4, mode='train'):
-        self.mode = mode.split('_')[0]
-#        self.mode = 'train'
+    def __init__(self, DATA_DIR, view_num=4, mode='test'):
+        self.mode = 'test'
         self.train_mode = mode.split('_')[-1]
-        self.shuffle = True if self.mode == 'train' else False
+        self.shuffle = False
 
         self.view_num = view_num
         self.load_data(DATA_DIR)

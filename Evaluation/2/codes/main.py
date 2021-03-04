@@ -13,10 +13,7 @@ def main(args):
     
     model = DCA(FLAGS)
 
-    if 'train' in FLAGS.mode:
-        model.train()
-    elif FLAGS.mode == 'test':
-        model.test()
+    model.test()
 
 if __name__=='__main__':
     tf.app.run()
