@@ -5,7 +5,7 @@
 
 [[2019] Assembly Robot AI > 서울대 대용량 파일 공유](https://drive.google.com/drive/folders/1iMKuNfvyc5x8pfoO2DiyxCkWfwr13Jw0)에서 다운로드
 
-* IKEARobot.zip
+* IKEArobot.zip
 
               function/Pose/data 폴더를 Second_Year/Mission2/function/Pose/data로 옮김
               model 폴더를 Second_Year/Mission2/model로 옮김

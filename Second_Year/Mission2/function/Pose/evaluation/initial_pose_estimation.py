@@ -49,7 +49,7 @@ class InitialPoseEstimation():
         if args.opt.pose_model_adr:
             pose_model_adr = args.opt.pose_model_adr
         else:
-            pose_model_adr = args.opt.pose_model_path + '/correspondence_block.pt'
+            pose_model_adr = args.opt.pose_model_path + '/correspondence_block_finetuned.pt'
 
         # load weights
         with args.graph_pose.as_default():

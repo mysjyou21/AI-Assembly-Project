@@ -334,6 +334,13 @@ class DetectionModel():
             else:
                 part_ids = part_ids_temp
 
+            # sample2 step4에서 part5, part6 바뀐 경우 후처리
+            if step_num == 4:
+                if new_boxes[0, 1] < new_boxes[1, 1]:
+                    part_ids = ['5', '6']
+                else:
+                    part_ids = ['6', '5']
+
             for jk, key in enumerate(part_ids):
                 (x1, y1, x2, y2) = new_boxes[jk, :]
 

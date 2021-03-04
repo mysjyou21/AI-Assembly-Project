@@ -187,6 +187,7 @@ class MSN2_hole_detector():
                         hole_id_dict_temp = hole_id_dict[partname]
                         hole_id_position = hole_id_dict_temp.index(hole_id_temp)
                         holename_temp = part_holename_dict[partname][hole_id_position]
+                        holename_temp = partname + '_1-' + holename_temp
                         partInfo[-1] = [holename_temp]
                         step_info[i] = partInfo.copy()
             self.parts_info[step_num] = step_info

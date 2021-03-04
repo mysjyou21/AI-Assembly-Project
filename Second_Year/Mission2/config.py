@@ -44,7 +44,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--mid_RT_on', type=str2bool, default=True)
     parser.add_argument('--hole_detection_on', type=str2bool, default=True)
     parser.add_argument('--use_fine_tuned_model_detection', type=str2bool, default=True)
-    parser.add_argument('--use_fine_tuned_model_pose', type=str2bool, default=True)
+    parser.add_argument('--use_general_model_pose', type=str2bool, default=False)
     parser.add_argument('--save_pose_indiv', type=str2bool, default=False)
     parser.add_argument('--print_z_axis_flip', type=str2bool, default=False)
     parser.add_argument('--pose_interpolation', default='nearest', help='[nearest, area]')
@@ -133,8 +133,8 @@ def init_args(description='Robot'):
 
     if not opt.use_fine_tuned_model_detection:
         opt.det_config2_name = './model/detection/mission2/parts_nft.pickle'
-    if not opt.use_fine_tuned_model_pose:
-        opt.pose_model_name = 'correspondence_block_not_finetuned.pt'
+    if opt.use_general_model_pose:
+        opt.pose_model_adr = './model/pose/mission2/correspondence_block_general.pt'
 
     ####### Temp ########
     opt.temp = str2bool(opt.temp)
