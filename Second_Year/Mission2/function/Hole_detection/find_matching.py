@@ -21,6 +21,7 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
         intersection = False
         fastener_id_list = list()
         hole_matching_info_list = list()
+        dist_list_fail_check = list()
         fastenerInfo_list = fastenerInfo_list_original.copy()
         part_holeInfo_dict = part_holeInfo_dict_original.copy()
         count = 0
@@ -59,7 +60,11 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
             for fastener, connectingInfo in fastener_connectingInfo.items():
                 sub_final_dist_list.append(connectingInfo[0])
                 fastener_idxs_sub.append(fastener)
-            min_dist = sorted(sub_final_dist_list)[0]
+            try:
+                min_dist = sorted(sub_final_dist_list)[0]
+                dist_list_fail_check.append(min_dist)
+            except IndexError:
+                break
             fastener_idx = fastener_idxs_sub[sub_final_dist_list.index(min_dist)]
 
             # 체결선을 바탕으로 어떤 hole끼리 매칭되었는지 저장하는데, 한번 사용된 hole은 다시 사용될 수 없음.
@@ -78,6 +83,7 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
             part2_hole_list = part_holeInfo_dict[part_hole_2[0]].copy()
             part2_hole_list = [x for x in part2_hole_list if part_hole_2[1] != x[0]]
             part_holeInfo_dict[part_hole_2[0]] = part2_hole_list.copy()
+
             count += 1
 
         # 직선 사이에 교점이 있는지 체크: x좌표의 차이의 곱이 음수면 교점 발생
@@ -108,7 +114,12 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
                         impossible_f2_list.append(sorted(hole_matching_info_list[j].copy(),key=lambda x:x[0]))
                         impossible_matching[fastener_id1] = impossible_f1_list.copy()
                         impossible_matching[fastener_id2] = impossible_f2_list.copy()
-        
+
+    # is_fail set
+    if len(dist_list_fail_check) != 0:
+        max_dist = max(dist_list_fail_check)
+        if max_dist > 800:
+            self.is_fail = True
     ######## Visualization ###########
     inv_img = cut_image.copy()
     for idx in fastener_id_list:
@@ -192,7 +203,6 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
 
             new_parts_info_list.append([new_part_id, new_part_RT_class, new_part_used_hole])
     step_info_sub = mid_info_list + new_parts_info_list
-
     # Connectivity
     connectivity_candidate = list()
     for hole_matching in hole_matching_info_list:
@@ -220,7 +230,6 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
         hole1 = part_hole1[1]
         hole2 = part_hole2[1]
         hole_pairs_list.append(hole1+"#"+hole2)
-
     step_info = step_info_sub + [connectivity]
     return step_info, hole_pairs_list
 
@@ -259,6 +268,7 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
     fastener_idxs = list()
     fastener_id_list = list()
     fastener_idxs = [sub_final_dist_list.index(i) for i in dist_list if i not in fastener_idxs]
+    
     for fastener_idx in fastener_idxs:
         addition = True
         hole_matching_info_raw = fastener_connectingInfo[fastener_idx]
@@ -272,8 +282,14 @@ def point_matching(self, step_num, connector_num, fastenerInfo_list, part_holeIn
             hole_matching_info = [hole_matching_info_raw[1]]
             hole_matching_info_list.append(hole_matching_info.copy())
             fastener_id_list.append(fastener_idx)
-    hole_matching_info_list = hole_matching_info_list[:connector_num]
-    connected_fastener_list = fastener_id_list[:connector_num]
+    
+    # 연결자 수가 체결선 수보다 같거나 적으면 연결자 수를 사용하고, 그 반대이면 체결선 수를 사용 (IndexError 해결)
+    if connector_num <= len(fastener_idxs):
+        hole_matching_info_list = hole_matching_info_list[:connector_num]
+        connected_fastener_list = fastener_id_list[:connector_num]
+    else:
+        hole_matching_info_list = hole_matching_info_list
+        connected_fastener_list = fastener_id_list
     
     ######### Visualization ###########
     inv_img = cut_image.copy()

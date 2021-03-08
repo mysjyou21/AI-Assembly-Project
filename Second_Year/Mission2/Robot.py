@@ -88,6 +88,7 @@ class Assembly():
         self.parts_bboxed = {}  # detected part images shown as bbox on whole image {step_num  : list of part images}
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
         self.mid_base = {} # {step_num: [base parts which consist of mid part]}
+        self.is_fail = False # possibility for hole matching failure
         
         # component recognition results, string
         self.connectors_serial_OCR = {}
@@ -765,6 +766,7 @@ class Assembly():
                     connector_dic['#'] = mults[0][0]
                     action_dic['Connector'] = connector_dic
                     action_dic['HolePair'] = self.hole_pairs[step_num]
+                    action_dic['Fail'] = self.is_fail
 
 
                 step_dic['Action%d' % act_i] = action_dic
@@ -829,6 +831,7 @@ class Assembly():
                     connector_dic['#'] = mults[0]
                     action_dic['Connector'] = connector_dic
                     action_dic['HolePair'] = self.hole_pairs[step_num]
+                    action_dic['Fail'] = self.is_fail
 
                     step_dic['Action%d' % act_i] = action_dic
 
@@ -886,6 +889,7 @@ class Assembly():
                     connector_dic['#'] = mults[0]
                     action_dic['Connector'] = connector_dic
                     action_dic['HolePair'] = self.hole_pairs[step_num]
+                    action_dic['Fail'] = self.is_fail
 
                     step_dic['Action%d' % 0] = action_dic
                 elif len(connectivity) == 4:  # temp 1:many -> to be added
@@ -903,6 +907,7 @@ class Assembly():
                     connector_dic['#'] = ''
                     action_dic['Connector'] = connector_dic
                     action_dic['HolePair'] = []
+                    action_dic['Fail'] = self.is_fail
 
                     step_dic['Action%d' % 0] = action_dic
 
@@ -948,6 +953,7 @@ class Assembly():
             connector_dic['#'] = '1'
             action_dic['Connector'] = connector_dic
             action_dic['HolePair'] = self.hole_pairs[step_num]
+            action_dic['Fail'] = self.is_fail
 
             step_dic['Action%d' % 0] = action_dic
         else:
@@ -965,6 +971,7 @@ class Assembly():
             connector_dic['#'] = ''
             action_dic['Connector'] = connector_dic
             action_dic['HolePair'] = []
+            action_dic['Fail'] = self.is_fail
 
             step_dic['Action%d' % 0] = action_dic
 
@@ -1112,6 +1119,7 @@ class Assembly():
                     component_list.append(tool)
 
         ##### Main Code #####
+        self.is_fail = False
         if step_num > 2:
             find_mid = self.find_mid
             K = self.K
@@ -1123,7 +1131,7 @@ class Assembly():
             hole_pairs = self.hole_pairs
             mid_base = self.mid_base
 
-            parts_info, hole_pairs, mid_base = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            parts_info, hole_pairs, mid_base, self.is_fail = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
             mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, mid_base, find_mid, used_parts=self.used_parts[step_num-1], fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info
@@ -1149,7 +1157,7 @@ class Assembly():
             hole_pairs = self.hole_pairs
             mid_base = self.mid_base
 
-            parts_info, hole_pairs, mid_base = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
+            parts_info, hole_pairs, mid_base, self.is_fail = self.hole_detector_init.main_hole_detector(step_num, step_images, parts_info, connectors, mults, \
             mid_id_list, K, mid_RT, RTs_dict, hole_pairs, component_list, mid_base, find_mid, fasteners_loc=self.fasteners_loc)
 
             self.parts_info = parts_info

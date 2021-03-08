@@ -40,6 +40,7 @@ class MSN2_hole_detector():
         self.mid_base = mid_base
         self.fasteners_loc = fasteners_loc
         self.v_dir = os.path.join(self.opt.intermediate_results_path, 'hole_detection_visualization')
+        self.is_fail = False
         if not os.path.exists(self.v_dir):
             os.mkdir(self.v_dir)
 
@@ -55,6 +56,7 @@ class MSN2_hole_detector():
         W = self.cut_image.shape[1]
         self.mid_base[step_num] = self.mid_id_list
         step_connector = self.connectors[step_num][0]
+        
         # 연결자가 있으면 사용하고, 없으면 hole 정보 없이 self.parts_info(group_as_action으로 넘어가는 정보) 생성
         if len(step_connector) == 0 or ((step_num > 2) and int(mid_RT.sum())==0):
             part_id_list = [x[0] for x in self.parts_info[step_num]]
@@ -62,6 +64,7 @@ class MSN2_hole_detector():
             step_name = 'step' + str(step_num-1)
             matched_pose_mid = self.closest_gt_RT_index(mid_RT)
             used_part_hole = [[step_name, matched_pose_mid, []]]
+            # 넘어가는 정보: 검출된 new_part, new_part's pose
             if len(new_id_list) != 0:
                 for new_id in new_id_list:
                     new_RT = [x[1] for x in self.parts_info[step_num] if new_id in x][0]
@@ -75,7 +78,7 @@ class MSN2_hole_detector():
 
             print(step_info)
 
-            return self.parts_info, self.hole_pairs, self.mid_base
+            return self.parts_info, self.hole_pairs, self.mid_base, self.is_fail
         elif len(step_connector) != 0:
             connector = step_connector[0]
             self.connector = connector
@@ -89,26 +92,28 @@ class MSN2_hole_detector():
         
         # 체결선의 수가 mult number보다 작아서 indexError나는 경우에 대한 처리
         fastenerInfo_list = fastener_loader(self, self.cut_image.copy(), component_list, self.fasteners_loc)
-        if len(fastenerInfo_list) < self.mult:
-            part_id_list = [x[0] for x in self.parts_info[step_num]]
-            new_id_list = [x for x in part_id_list if x not in self.mid_id_list]
-            step_name = 'step' + str(step_num-1)
-            matched_pose_mid = self.closest_gt_RT_index(mid_RT)
-            used_part_hole = [[step_name, matched_pose_mid, []]]
-            if len(new_id_list) != 0:
-                for new_id in new_id_list:
-                    new_RT = [x[1] for x in self.parts_info[step_num] if new_id in x][0]
-                    matched_pose_new = self.closest_gt_RT_index(new_RT)
-                    used_part_hole.append([new_id, matched_pose_new, []])
-            else:
-                pass
-            step_info = used_part_hole+[['']]
-            self.parts_info[step_num] = step_info
-            self.hole_pairs[step_num] = []
+        
+        # if len(fastenerInfo_list) < self.mult:
+        #     part_id_list = [x[0] for x in self.parts_info[step_num]]
+        #     new_id_list = [x for x in part_id_list if x not in self.mid_id_list]
+        #     step_name = 'step' + str(step_num-1)
+        #     matched_pose_mid = self.closest_gt_RT_index(mid_RT)
+        #     used_part_hole = [[step_name, matched_pose_mid, []]]
+        #     if len(new_id_list) != 0:
+        #         for new_id in new_id_list:
+        #             new_RT = [x[1] for x in self.parts_info[step_num] if new_id in x][0]
+        #             matched_pose_new = self.closest_gt_RT_index(new_RT)
+        #             used_part_hole.append([new_id, matched_pose_new, []])
+        #     else:
+        #         pass
+        #     step_info = used_part_hole+[['']]
+        #     self.parts_info[step_num] = step_info
+        #     self.hole_pairs[step_num] = []
 
-            print(step_info)
+        #     print(step_info)
 
-            return self.parts_info, self.hole_pairs, self.mid_base
+        #     return self.parts_info, self.hole_pairs, self.mid_base, self.is_fail
+        
         # part ID, Pose, KRT
         step_parts_info = self.parts_info[step_num]
         self.K = K
@@ -256,7 +261,7 @@ class MSN2_hole_detector():
             self.parts_info[step_num] = step_info
             self.hole_pairs[step_num] = []
             print(step_info)
-        return self.parts_info, self.hole_pairs, self.mid_base
+        return self.parts_info, self.hole_pairs, self.mid_base, self.is_fail
 
     def closest_gt_RT_index(self, RT_pred):
         def R_distance(RT1, RT2):
