@@ -20,15 +20,12 @@ from function.mission_output import *
 from function.OCRs_new import *
 from function.Pose.evaluation.initial_pose_estimation import InitialPoseEstimation
 from function.Fastener.evaluation.fastener_detection import FastenerDetection
-from function.hole import *
 from function.Grouping_mid.hole_loader import base_loader, mid_loader
 from function.Grouping_mid.grouping_RT import transform_hole, baseRT_to_midRT
 from function.Hole_detection.MSN2_hole_detector import MSN2_hole_detector
 
-from pathlib import Path
 import json
 import shutil
-import platform
 import copy
 
 from keras import backend as K
@@ -38,10 +35,10 @@ class Assembly():
     def __init__(self, opt):
         self.opt = opt
         self.cuts = []
-        self.cut_names = []
+        self.step_names = []
         self.steps = {}
         self.num_steps = 0
-        
+
 
         gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
         config = tf.ConfigProto(gpu_options = gpu_options)
@@ -67,7 +64,7 @@ class Assembly():
             self.sess_fastener = tf.Session(config=config)
             self.fastener_model = FastenerDetection(self)
         self.hole_detector_init = MSN2_hole_detector(self.opt)
-        
+
         # Detection variables
         # component detection results, (x, y, w, h)
         self.circles_loc = {}
@@ -89,14 +86,14 @@ class Assembly():
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
         self.mid_base = {} # {step_num: [base parts which consist of mid part]}
         self.is_fail = False # possibility for hole matching failure
-        
+
         # component recognition results, string
         self.connectors_serial_OCR = {}
         self.connectors_mult_OCR = {}
 
         # Retrieval variables
         self.candidate_classes = []  # candidate cad models for retrieval
-        
+
         # Pose variables
         self.cad_models = {}  # names of cad models of retrieval results
         self.pose_return_dict = {} # RT of detected part images {step_num : list of RT (type : np.array, shape : [3, 4])}
@@ -150,8 +147,6 @@ class Assembly():
         else:
             print("No image in %s"%(self.opt.cut_path))
             cut_paths = filenames
-        self.cut_names = cut_paths
-        print([os.path.basename(x) for x in cut_paths])
         cuts = [np.asarray(Image.open(cut_paths[n]))[:, :, :3] for n in range(len(cut_paths))]
         # 준형: resize, cut만 읽어올 수 있게 추가(material 말고), preprocessing(양탄자 처리)
         for cut in cuts:
@@ -160,24 +155,28 @@ class Assembly():
         # if argument 'starting_cut' is -1(=default value), is_valid_cut function is used.
         idx = 1
         if self.opt.starting_cut == -1:
-            for cut in cuts:
+            for n, cut in enumerate(cuts):
                 # resize
                 cut_resized = resize_cut(cut)
                 # preprocessing
                 cut_resized = prep_carpet(cut_resized)
                 if is_valid_cut(cut_resized):
+                    self.step_names.append(cut_paths[n])
                     self.steps[idx] = cut_resized
                     self.num_steps += 1
                     idx += 1
         else:
-            for cut in cuts[self.opt.starting_cut-1:]:
+            for n, cut in enumerate(cuts[self.opt.starting_cut-1:]):
                 # resize
                 cut_resized = resize_cut(cut)
                 # preprocessing
                 cut_resized = prep_carpet(cut_resized)
+                self.step_names.append(cut_paths[self.opt.starting_cut + n - 1])
                 self.steps[idx] = cut_resized
                 self.num_steps += 1
                 idx += 1
+
+        print([os.path.basename(x) for x in self.step_names])
 
     def detect_step_component(self, step_num, print_result=True):  # 준형
         """
@@ -612,7 +611,7 @@ class Assembly():
         '104322' = 'long_screw',
         '122925' = 'short_screw',
         '101350' = 'wood_pin'
-        
+
         Args:
             step_num: step number
         Uses:
@@ -635,7 +634,7 @@ class Assembly():
         self.fastener_model.test(self, step_num)
         # visualize
         self.fastener_model.visualize(self, step_num)
-    
+
 
     def group_as_action(self, step_num):  # action 관련 정보들을 묶어서 self.actions에 넣고 ./output에 json write
         """ Group components in action-unit
@@ -1056,7 +1055,7 @@ class Assembly():
                     self.part_write[step_num][key] += [1]
                 else:
                     self.part_write[step_num][key] += [0]
-                    
+
             for key in mid_id_list:
                 if key in base_id_list:
                     idx = base_id_list.index(key)

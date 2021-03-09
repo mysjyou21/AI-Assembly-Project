@@ -2,11 +2,11 @@
 
 class SocketInfo():
     # 접속할 서버 주소
-    HOST='xx.xx.xx.xx'
+    HOST='127.0.0.1'
     # 서울대 포트
-    PORT1=6461
+    PORT1=5555
     # 윈도우 포트
-    PORT2=4616
+    PORT2=6666
     # 소켓 데이터 사이즈
     BUFSIZE=1024
     ADDR1=(HOST, PORT1)

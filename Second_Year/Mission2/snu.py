@@ -1,17 +1,13 @@
 from Robot import Assembly
 import glob, os
 import fnmatch
-from os.path import exists
-import shutil
 import cv2
 import time
 import platform
 import pickle
-import json
 from socket import *
 from sys import exit
 from data_file import SocketInfo, bcolors
-from function.Grouping_mid.hole_loader import mid_loader
 
 from config import *
 opt = init_args()
@@ -31,10 +27,6 @@ def getFileData(path, filename):
 
 csock = socket(AF_INET, SOCK_STREAM)
 csock.connect(SocketInfo.ADDR1)
-
-# auto-run (Eunji)
-AUTO=False
-new_cad_list = [['step1_a.STL', 'step1_b.STL'], ['step2.STL'], ['step3.STL'], ['step4.STL'], ['step5.STL'], ['step6.STL'], ['step7.STL'], ['step8.STL']]
 
 def main():
     while True:
@@ -74,6 +66,7 @@ def main():
                     minute = int((toc - tic) // 60)
                     return minute, sec
 
+                print(bcolors.CBLUEBG+"    Save Cad Center started"+bcolors.CEND)
                 save_cad_center(initial=True)
 
                 csock.send(("msg_success").encode())
@@ -94,8 +87,6 @@ def main():
                 if step == 1: # 스탭 1은 중간산출물이 없기 때문에 파일을 읽어가지 않음
                     SIGNAL = True
                 else:
-#                    for p in new_cad_list[step-2]:
-#                        os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
                     SIGNAL = False
                     while not SIGNAL:
                         print('Waiting Signal ...', end='\r')
@@ -115,6 +106,7 @@ def main():
                             SIGNAL = True
 
                     print(list_added_stl, list_added_obj)
+                    print(bcolors.CBLUEBG+"    Save Cad Center started"+bcolors.CEND)
                     save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
 
                 csock.send(("msg_success").encode()) # receive the request
@@ -123,12 +115,15 @@ def main():
 
                 step_start_time = time.time()
                 print(bcolors.CBLUE2+"Start Recognizing"+bcolors.CEND)
+                print(bcolors.CBLUEBG+"    Object Detection started"+bcolors.CEND)
                 IKEA.detect_step_component(step)
-
+                print(bcolors.CBLUEBG+"    Pose Prediction started"+bcolors.CEND)
                 IKEA.predict_pose(step)
-                
+
+                print(bcolors.CBLUEBG+"    Hole Detection(fastener) started"+bcolors.CEND)
                 IKEA.fastener_detector(step)
 
+                print(bcolors.CBLUEBG+"    Hole Detection(connection) started"+bcolors.CEND)
                 if step > 2 and opt.mid_RT_on:
                     IKEA.group_RT_mid(step)
                     if opt.hole_detection_on:
@@ -137,6 +132,7 @@ def main():
                     if opt.hole_detection_on:
                         IKEA.msn2_hole_detector(step)
 
+                print(bcolors.CBLUEBG+"    Action_Grouping started"+bcolors.CEND)
                 IKEA.group_as_action(step)
                 print(IKEA.actions[step])
 
@@ -149,9 +145,6 @@ def main():
                 if opt.print_time:
                     print(bcolors.CBLUE2+'step time : {} min {} sec'.format(step_min, step_sec)+bcolors.CEND)
                     print(bcolors.CBLUE2+'total time : {} min {} sec'.format(total_min, total_sec)+bcolors.CEND)
-                if AUTO and step<IKEA.num_steps:
-                    for p in new_cad_list[step-1]:
-                        os.system('mv '+os.path.join(opt.assembly_path, p)+' '+os.path.join(opt.cad_path, p))
                 step += 1
                 if step > IKEA.num_steps:
                     print(bcolors.CBLUE2+'Last Step'+bcolors.CEND)
@@ -171,7 +164,7 @@ def main():
                 filename = filename.decode()
 
                 # 서울대의 아웃풋 경로에 파일이 없으면 Kitech planner로 에러 메세지를 보냄
-                if not exists(os.path.join(IKEA.opt.output_dir, filename)):
+                if not os.path.exists(os.path.join(IKEA.opt.output_dir, filename)):
                     msg = "error"
                     csock.sendall(msg.encode())
                     print(bcolors.CYELLOW2+"File Not Found%s"%(filename)+bcolors.CEND) # ...???
