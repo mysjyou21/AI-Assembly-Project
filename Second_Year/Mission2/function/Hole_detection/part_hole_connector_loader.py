@@ -17,12 +17,10 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
     for part_idx, part_id in enumerate(part_id_list):
         if part_id in self.mid_id_list:
             hole_XYZ, holename = mid_loader('step%i'%(step_num-1), self.opt.hole_path_2, self.opt.cad_path, used_parts=used_parts)
-            # if step_num == 5:
-            #     import ipdb; ipdb.set_trace()
             try:
                 hole_XYZ = hole_XYZ[part_id]
                 holename = holename[part_id]
-                if part_id == 'part7' or part_id == 'part8':
+                if part_id == 'part7' or part_id == 'part8' or part_id == "part7_1" or part_id=="part8_1":
                     real_used_idx = [holename.index(x) for x in holename if ('C122620' not in x) or (('C122620' in x) and ('hole_1' in x))]
                     hole_XYZ = hole_XYZ[real_used_idx,:]
                     holename = [holename[i] for i in real_used_idx]
@@ -38,7 +36,7 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
 
         else:
             hole_XYZ, holename = base_loader(part_id, self.opt.hole_path_2, self.opt.cad_path)
-            if part_id == 'part7' or part_id == 'part8':
+            if part_id == 'part7' or part_id == 'part8' or part_id == "part7_1" or part_id=="part8_1":
                 real_used_idx = [holename.index(x) for x in holename if ('C122620' not in x) or (('C122620' in x) and ('hole_1' in x))]
                 hole_XYZ = hole_XYZ[real_used_idx,:]
                 holename = [holename[i] for i in real_used_idx]
@@ -59,11 +57,13 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
             holeInfo_list.append(holeInfo.copy())
             idx += 1
 
-        holeInfo_list =add_connector(int(part_id[-1]), holeInfo_list)
+        if "_" not in part_id:
+            holeInfo_list =add_connector(int(part_id[-1]), holeInfo_list)
+        else:
+            holeInfo_list =add_connector(int(part_id[-3]), holeInfo_list)
 
         part_holeInfo_dict[part_id] = holeInfo_list.copy()
         part_holename_dict[part_id] = holename.copy()
-
     ##### visualization #####
         for hole_info in holeInfo_list:
             x_coord = hole_info[1]
@@ -73,7 +73,6 @@ def part_hole_connector_loader(self, step_num, part_id_list, part_RT_list, K, H,
 
         cv2.imwrite(os.path.join(self.v_dir, str(self.step_num) + '_hole_check.png'), debug_img)
     #########################
-
     return part_holename_dict, part_holeInfo_dict, hole_id_dict
 
 def project_points(points, K, RT, H, W):

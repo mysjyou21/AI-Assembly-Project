@@ -30,6 +30,7 @@ def main():
     IKEA = Assembly(opt)
     print('--------------')
     print('gpu : ', opt.gpu)
+    print('assembly_name', opt.assembly_name)
     print('num_steps : ', IKEA.num_steps)
     print('--------------')
 
@@ -96,18 +97,22 @@ def main():
         else:
             IKEA.predict_pose(step)
 
-        IKEA.fastener_detector(step)
+        if not opt.no_hole:
+            IKEA.fastener_detector(step)
 
-        if step > 2 and opt.mid_RT_on:
-            IKEA.group_RT_mid(step)
-            if opt.hole_detection_on:
-                IKEA.msn2_hole_detector(step)
-        else:
-            if opt.hole_detection_on:
-                IKEA.msn2_hole_detector(step)
-        IKEA.group_as_action(step)
+            if step > 1:
+                IKEA.make_parts_info_indexed(step)
 
-        print(IKEA.step_action)
+            if step > 2 and opt.mid_RT_on:
+                IKEA.group_RT_mid(step)
+                if opt.hole_detection_on:
+                    IKEA.msn2_hole_detector(step)
+            else:
+                if opt.hole_detection_on:
+                    IKEA.msn2_hole_detector(step)
+            IKEA.group_as_action(step)
+
+            print(IKEA.step_action)
 
         step_end_time = time.time()
         step_min, step_sec = get_elapsed_time(step_end_time, step_start_time)

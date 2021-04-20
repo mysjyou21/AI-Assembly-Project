@@ -1,0 +1,52 @@
+{
+    "File_name": "part1",
+    "data": {
+        "PartName": "PART1.STEP",
+        "SizeToAxisX": "435.41",
+        "SizeToAxisY": "410",
+        "SizeToAxisZ": "10",
+        "CenterPointX": "0",
+        "CenterPointY": "0",
+        "CenterPointZ": "5",
+        "MinPointX": "-217.71",
+        "MinPointY": "-205",
+        "MinPointZ": "0",
+        "MaxPointX": "217.71",
+        "MaxPointY": "205",
+        "MaxPointZ": "10",
+        "hole": {
+            "hole_1": {
+                "CenterX": "296.71",
+                "CenterY": "370.77",
+                "CenterZ": "5",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1"
+            },
+            "hole_2": {
+                "CenterX": "138.71",
+                "CenterY": "370.77",
+                "CenterZ": "5",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1"
+            },
+            "hole_3": {
+                "CenterX": "328.71",
+                "CenterY": "43.39",
+                "CenterZ": "5",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1"
+            },
+            "hole_4": {
+                "CenterX": "106.71",
+                "CenterY": "43.39",
+                "CenterZ": "5",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1"
+            }            
+        }
+    }
+}

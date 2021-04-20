@@ -21,3 +21,6 @@ if opt.remove_center==1:
     if os.path.exists(center_path):
         os.system('rm ' + center_path)
         print('Removed center.json in %s'%(center_path))
+
+if os.path.exists('log.txt'):
+    os.system('rm log.txt')

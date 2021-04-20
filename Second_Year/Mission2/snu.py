@@ -8,6 +8,8 @@ import pickle
 from socket import *
 from sys import exit
 from data_file import SocketInfo, bcolors
+import logging
+import logging.handlers
 
 from config import *
 opt = init_args()
@@ -52,6 +54,11 @@ def main():
                 print('gpu : ', opt.gpu)
                 print('num_steps : ', IKEA.num_steps)
 
+                # For print errors..
+                log_name = "./log.txt"
+                logging.basicConfig(filename=log_name, level=logging.DEBUG)
+                logging.info("num_steps: %d"%(IKEA.num_steps))
+
                 list_prev_obj = []
                 list_prev_stl = []
 
@@ -84,6 +91,8 @@ def main():
                 commend_decode = commend.decode('utf-8')
                 print(bcolors.CBLUE2+"\n(Step %d)\n"%(step)+bcolors.CEND)
 
+                logging.info("%d"%(step))
+
                 if step == 1: # 스탭 1은 중간산출물이 없기 때문에 파일을 읽어가지 않음
                     SIGNAL = True
                 else:
@@ -107,7 +116,11 @@ def main():
 
                     print(list_added_stl, list_added_obj)
                     print(bcolors.CBLUEBG+"    Save Cad Center started"+bcolors.CEND)
-                    save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
+                    logging.info("     Save Cad Center started")
+                    try:
+                        save_cad_center(initial=False, cad_adrs=list_added_obj + list_added_stl)
+                    except Exception as e:
+                        logging.error(e)
 
                 csock.send(("msg_success").encode()) # receive the request
 
@@ -116,24 +129,55 @@ def main():
                 step_start_time = time.time()
                 print(bcolors.CBLUE2+"Start Recognizing"+bcolors.CEND)
                 print(bcolors.CBLUEBG+"    Object Detection started"+bcolors.CEND)
-                IKEA.detect_step_component(step)
+                logging.info("    Object Detection started")
+                try:
+                    IKEA.detect_step_component(step)
+                except Exception as e:
+                    logging.error(e)
                 print(bcolors.CBLUEBG+"    Pose Prediction started"+bcolors.CEND)
-                IKEA.predict_pose(step)
+                logging.info("    Pose Prediction started")
+                try:
+                    IKEA.predict_pose(step)
+                except Exception as e:
+                    logging.error(e)
 
                 print(bcolors.CBLUEBG+"    Hole Detection(fastener) started"+bcolors.CEND)
-                IKEA.fastener_detector(step)
+                logging.info("    Hole Detection(fastener) started")
+                try:
+                    IKEA.fastener_detector(step)
+                except Exception as e:
+                    logging.error(e)
 
-                print(bcolors.CBLUEBG+"    Hole Detection(connection) started"+bcolors.CEND)
+
                 if step > 2 and opt.mid_RT_on:
-                    IKEA.group_RT_mid(step)
+                    print(bcolors.CBLUEBG+"    Mid Pose started"+bcolors.CEND)
+                    logging.info("    Mid Pose started")
+                    try:
+                        IKEA.group_RT_mid(step)
+                    except Exception as e:
+                        logging.error(e)
                     if opt.hole_detection_on:
-                        IKEA.msn2_hole_detector(step)
+                        print(bcolors.CBLUEBG+"    Hole Detection(connection) started"+bcolors.CEND)
+                        logging.info("    Hole Detection(connection) started")
+                        try:
+                            IKEA.msn2_hole_detector(step)
+                        except Exception as e:
+                            logging.error(e)
                 else:
                     if opt.hole_detection_on:
-                        IKEA.msn2_hole_detector(step)
+                        print(bcolors.CBLUEBG+"    Hole Detection(connection) started"+bcolors.CEND)
+                        logging.info("    Hole Detection(connection) started")
+                        try:
+                            IKEA.msn2_hole_detector(step)
+                        except Exception as e:
+                            logging.error(e)
 
                 print(bcolors.CBLUEBG+"    Action_Grouping started"+bcolors.CEND)
-                IKEA.group_as_action(step)
+                logging.info("    Action_Grouping started")
+                try:
+                    IKEA.group_as_action(step)
+                except Exception as e:
+                    logging.error(e)
                 print(IKEA.actions[step])
 
                 print(bcolors.CBLUE2+bcolors.CBOLD+"[SNU] Send recognize info"+bcolors.CEND)
@@ -185,6 +229,7 @@ def main():
                 exit()
         except Exception as e:
             print(bcolors.CRED2+bcolors.CBOLD+"%s:%s" % (e, SocketInfo.ADDR1)+bcolors.CEND)
+            logging.error(e)
             csock.close()
             exit()
 

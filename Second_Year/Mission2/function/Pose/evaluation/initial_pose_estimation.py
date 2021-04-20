@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 
 from ..bop_toolkit_lib.misc import *
 from ..models.correspondence_block_model import CorrespondenceBlockModel
+from ..models.part4_model import Part4DirModel
 from ..utils.pose_gt import *
 
 sys.path.append('./function/utilities')
@@ -40,6 +41,80 @@ class Color():
     def __call__(self, x):
         return self.colors[x]
 
+class Part4DirEstimation():
+    def __init__(self, args):
+        self.args = args
+        refresh_folder(args.opt.initial_pose_estimation_part4dir_path)
+        # load weights (part4)
+        part4dir_model_adr = args.opt.part4dir_model_path + '/part4dir_block.pt'
+        with args.graph_part4dir.as_default():
+            sess = args.sess_part4dir
+            self.model = Part4DirModel()
+            print('PART4 DIRECTION MODEL : Loading saved model from', part4dir_model_adr)
+            checkpoint = torch.load(part4dir_model_adr, map_location='cuda:0') 
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.model.eval()
+            self.model.cuda(0)
+
+    def test(self, images):
+        """estimate direction (0, 1) of part4 images
+        
+        Args:
+            images: list of images resized to (224, 224) (containes images that are not part4)
+        
+        Returns:
+            pred_directions : list of predicted directions
+        """
+        with torch.no_grad():
+            images = [transforms.ToTensor()(image) for image in images]
+            images = [torch.unsqueeze(image, 0) for image in images]
+            images_tensor = None
+            for image in images:
+                images_tensor = torch.cat((images_tensor, image), 0) if images_tensor is not None else image
+            images_tensor = images_tensor.cuda(0)
+            logit = self.model(images_tensor)
+            pred_directions = torch.argmax(logit, dim=1).squeeze().cpu().detach().numpy()
+            pred_directions = pred_directions.tolist()
+            if isinstance(pred_directions, int):
+                pred_directions = [pred_directions]
+        return pred_directions
+
+    def save_part4dir(self, step_num, directions, pred_directions, part_imgs):
+        """ save part4 direction predictions of Pnp and part4dir model
+        
+        border : inner = pnp, outer = part4dir
+        color : yellow = 0, blue = 1
+        
+        Args:
+            step_num: step number
+            directions: pnp predictions
+            pred_directions: part4dir predictions
+            part_imgs: input images of  part4dir network
+        """
+        
+        args = self.args
+        if args.opt.save_part4dir:
+            cad_models = args.cad_models[step_num]
+            part_imgs_bboxed = args.parts_bboxed[step_num]
+            for i, (direction, pred_direction, cad_model, part_img, part_img_bboxed) in enumerate(zip(directions, pred_directions, cad_models, part_imgs, part_imgs_bboxed)):
+                if cad_model == 'part4':
+                    plt.imsave(args.opt.initial_pose_estimation_part4dir_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img_bboxed)
+                    border = 20
+                    # inner
+                    color = [0, 0, 255] if direction == 1 else [255, 255, 0]
+                    part_img = cv2.copyMakeBorder(part_img, border, border, border, border, cv2.BORDER_CONSTANT, None, color)
+                    # outer
+                    color = [0, 0, 255] if pred_direction == 1 else [255, 255, 0]
+                    part_img = cv2.copyMakeBorder(part_img, border, border, border, border, cv2.BORDER_CONSTANT, None, color)
+                    plt.clf()
+                    plt.figure(figsize=(4, 4))
+                    plt.axis('off')
+                    part4dir_img = part_img
+                    plt.imshow(part4dir_img)
+                    plt.title('pnp : {}, part4dir : {}'.format(direction, pred_direction))
+                    plt.savefig(args.opt.initial_pose_estimation_part4dir_path + '/STEP{}_part{}_part4dir'.format(step_num, i))
+                    plt.close()
+
 
 class InitialPoseEstimation():
     def __init__(self, args):
@@ -49,7 +124,7 @@ class InitialPoseEstimation():
         if args.opt.pose_model_adr:
             pose_model_adr = args.opt.pose_model_adr
         else:
-            pose_model_adr = args.opt.pose_model_path + '/correspondence_block_finetuned.pt'
+            pose_model_adr = args.opt.pose_model_path + '/correspondence_block_finetuned_1.pt'
 
         # load weights
         with args.graph_pose.as_default():
@@ -73,7 +148,6 @@ class InitialPoseEstimation():
         self.point_clouds = [x / 100 for x in self.point_clouds]
         refresh_folder(args.opt.initial_pose_estimation_prediction_maps_path)
         refresh_folder(args.opt.initial_pose_estimation_visualization_path)
-        refresh_folder(args.opt.initial_pose_estimation_visualization_separate_path)
         refresh_folder(args.opt.part_id_pose_path)
 
 
@@ -90,12 +164,9 @@ class InitialPoseEstimation():
         image = args.steps[step_num].copy()
         self.H, self.W, _ = image.shape
         with torch.no_grad():
+            # STEP0
             # load image on GPU
-            if args.opt.pose_interpolation == 'nearest':
-                interpolation = cv2.INTER_NEAREST
-            else:
-                interpolation = cv2.INTER_AREA
-            image = cv2.resize(image.astype(np.uint8), (240, 320), interpolation=interpolation)
+            image = cv2.resize(image.astype(np.uint8), (240, 320), interpolation=cv2.INTER_NEAREST)
             image_tensor = transforms.ToTensor()(image)
             image_tensor = torch.unsqueeze(image_tensor, 0)
             image_tensor = image_tensor.cuda(0)
@@ -111,6 +182,7 @@ class InitialPoseEstimation():
 
             ID = idmask_pred.astype(np.uint8)
 
+            
             # remove small components
             ID_binarized = np.where(ID > 0, 255, 0).astype(np.uint8)
             retval, labels, stats, centroids = cv2.connectedComponentsWithStats(ID_binarized, connectivity=4)
@@ -147,7 +219,7 @@ class InitialPoseEstimation():
                 cv2.imwrite(save_path + '/STEP{}_W.png'.format(step_num), W)
                 cv2.imwrite(save_path + '/STEP{}_UVW.png'.format(step_num), UVW)
 
-            # post-process ID-map with detection classes (part2, part3, part7, part8)
+            # STEP1 : post-process ID-map with detection classes (part2, part3, part7, part8)
             parts_loc = args.parts_loc[step_num]
             cad_models = args.cad_models[step_num]
             
@@ -187,49 +259,17 @@ class InitialPoseEstimation():
                     elif 'part2' in detected_models:
                         ID = np.where(ID == 8, 2, ID)
 
-            ID_color = np.zeros((_H, _W, 3)).astype(np.uint8)
+            ID_step1 = ID
+            ID_step1_color = np.zeros((_H, _W, 3)).astype(np.uint8)
             for h in range(_H):
                 for w in range(_W):
-                    ID_color[h, w, :] = color(ID[h, w])
+                    ID_step1_color[h, w, :] = color(ID_step1[h, w])
 
             if args.opt.save_pose_prediction_maps:
-                cv2.imwrite(save_path + '/STEP{}_ID_1.png'.format(step_num), ID_color)
+                cv2.imwrite(save_path + '/STEP{}_ID_1.png'.format(step_num), ID_step1_color)
             
-            # post-process ID-map with detection bbox
-            parts_loc = args.parts_loc[step_num]
-            cad_models = args.cad_models[step_num]
-            ID_new = np.zeros(ID.shape).astype(np.int)
-            for bbox, model in zip(parts_loc, cad_models):
-                obj_id = args.cad_names.index(model) + 1
-                # leave specific obj_id
-                ID_id = (obj_id * (ID == obj_id)).astype(np.uint8)
-                # handle (part5 or part6) region
-                # part6 seg in part5 bbox is considered as part5, and vice versa
-                # part5, part6 in part5 bbox && part6 bbox are labeled 5 + 6 = 11
-                if obj_id in [5, 6]:
-                    obj_id_similar = 5 if obj_id == 6 else 6
-                    ID_id_similar = (obj_id * (ID == obj_id_similar)).astype(np.uint8)
-                    ID_id += ID_id_similar
-                # detection bbox mask
-                x, y, w, h = bbox[0:4]
-                x = int(x * _W / self.W)
-                y = int(y * _H / self.H)
-                w = int(w * _W / self.W)
-                h = int(h * _H / self.H)
-                mask_det_bbox = np.zeros_like(ID_id).astype(np.uint8)
-                cv2.rectangle(mask_det_bbox, (x, y), (x+w, y+h), color=255, thickness=-1)
-                # leave bbox region from specific ID map
-                ID_id = cv2.bitwise_and(ID_id, ID_id, mask=mask_det_bbox)
-                # add to template
-                ID_new += ID_id
-            ID_new_color = np.zeros((_H, _W, 3)).astype(np.uint8)
-            for h in range(_H):
-                for w in range(_W):
-                    ID_new_color[h, w, :] = color(ID_new[h, w])
-            if args.opt.save_pose_prediction_maps:
-                cv2.imwrite(save_path + '/STEP{}_ID_2.png'.format(step_num), ID_new_color)
 
-            # if no New part is found, infer from pose segmentation map
+            # STEP2 : if no New part is found, infer from pose segmentation map
             max_pixels = 0
             
             new_part_should_be_found_condition = True
@@ -242,8 +282,18 @@ class InitialPoseEstimation():
                     # short screw
                     new_part_should_be_found_condition = False
 
+            # search detection results history to figure out whether new part should be found.
             if new_part_should_be_found_condition:
-                if not len(set(args.used_parts[step_num]) & set(args.unused_parts[step_num])): # no New part found
+                detected_parts = args.used_parts_nonunique[step_num].copy() # current detection results
+                prev_detected_parts = args.used_parts_nonunique_cumulative[step_num - 1].copy() # detection results until previous step
+                new_parts = []
+                for detected_part in detected_parts:
+                    if detected_part in prev_detected_parts:
+                        prev_detected_parts.remove(detected_part)
+                    else:
+                        new_parts.append(detected_part)
+                if not len(new_parts):
+                    # no New part found
 
                     # divide ID to ID_parts
                     ID_parts = []
@@ -286,66 +336,107 @@ class InitialPoseEstimation():
 
                     # choose largest component of that part id
                     index = np.argmax(stats[max_pixels_look_up_part_id][:, -1])
+                    print('Added "New" at step {} : part{} (part0 means none added)'.format(step_num, max_pixels_look_up_part_id))
 
-                    # add to ID_new
+                    ID_step2 = ID_step1
+                    ID_step2_color = ID_step1_color
+
+                    # add bbox info, u
                     ID_part_to_add = np.where(indexed_maps[max_pixels_look_up_part_id] == index, max_pixels_look_up_part_id, 0).astype(np.uint8)
-                    ID_part_to_add_color = np.zeros((_H, _W, 3)).astype(np.uint8)
-                    for h in range(_H):
-                        for w in range(_W):
-                            ID_part_to_add_color[h, w, :] = color(ID_part_to_add[h, w])
-                    ID_new_modified = ID_new.astype(np.int) + ID_part_to_add.astype(np.int)
-                    assert np.any(ID_new_modified <= 255), 'ID_new_modified pixels values exceed 255'
-                    ID_new_modified = ID_new_modified.astype(np.uint8)
-                    ID_new_modified_color = ID_new_color + ID_part_to_add_color
-                    if args.opt.save_pose_prediction_maps:
-                        cv2.imwrite(save_path + '/STEP{}_ID_3.png'.format(step_num), ID_new_modified_color)
-                    print('Added "New" at step {} : part{} (part0 means none added)'.format(step_num, max_pixels_look_up_part_id)) #blue
-
-                    # add bbox info
                     nonzero_range_y, nonzero_range_x = np.nonzero(ID_part_to_add)
                     try:
                         y_min = np.min(nonzero_range_y)
                         y_max = np.max(nonzero_range_y)
                         x_min = np.min(nonzero_range_x)
                         x_max = np.max(nonzero_range_x)
+                        ID_step2_color = cv2.rectangle(ID_step2_color, (x_min, y_min), (x_max, y_max), color=(255, 255, 255), thickness=2)
                         y_min = int(y_min * self.H / _H)
                         y_max = int(y_max * self.H / _H)
-                        x_min = int(x_min * self.H / _H)
-                        x_max = int(x_max * self.H / _H)
+                        x_min = int(x_min * self.W / _W)
+                        x_max = int(x_max * self.W / _W)
                         step_part_image_bboxed = args.steps[step_num].copy()
                         step_part_image_bboxed = cv2.rectangle(step_part_image_bboxed, (x_min, y_min), (x_max, y_max), color=(255, 0, 0), thickness=2)
                         args.parts_bboxed[step_num].append(step_part_image_bboxed)
+                        args.parts_loc[step_num].append([x_min, y_min, x_max - x_min, y_max - y_min, 1.0])
                     except:
                         pass
 
-                    # update self.used_parts, self.unused_parts, self.cad_models
+                    # update self.used_parts, self.unused_parts, self.cad_models, self.used_parts_nonunique_cumulative
                     if max_pixels_look_up_part_id != 0:
                         args.used_parts[step_num].append(max_pixels_look_up_part_id)
                         args.used_parts[step_num].sort()
-                        args.unused_parts[step_num + 1].remove(max_pixels_look_up_part_id)
+                        args.used_parts_nonunique_cumulative[step_num].append(max_pixels_look_up_part_id)
+                        args.used_parts_nonunique_cumulative[step_num].sort()
+                        try:
+                            args.unused_parts[step_num + 1].remove(max_pixels_look_up_part_id)
+                        except:
+                            # incase of multiple parts
+                            pass
                         args.cad_models[step_num].append('part' + str(max_pixels_look_up_part_id))
-                        
 
-            # apply to ID
+                    # finish
+                    ID_step2 = ID_step1
             if max_pixels == 0:
-                ID = ID_new
-            else:
-                ID = ID_new_modified
+                ID_step2 = ID_step1
+                ID_step2_color = ID_step1_color
+            if args.opt.save_pose_prediction_maps:
+                cv2.imwrite(save_path + '/STEP{}_ID_2.png'.format(step_num), ID_step2_color)
+
+
+            # STEP3 : post-process ID-map with detection bbox
+            parts_loc = args.parts_loc[step_num]
+            cad_models = args.cad_models[step_num]
+            ID_step3 = np.zeros(ID.shape).astype(np.int)
+            for bbox, model in zip(parts_loc, cad_models):
+                obj_id = args.cad_names.index(model) + 1
+                # leave specific obj_id
+                ID_id = (obj_id * (ID_step2 == obj_id)).astype(np.uint8)
+                # handle (part5 or part6) region
+                # part6 seg in part5 bbox is considered as part5, and vice versa
+                # part5, part6 in part5 bbox && part6 bbox are labeled 5 + 6 = 11
+                if obj_id in [5, 6]:
+                    obj_id_similar = 5 if obj_id == 6 else 6
+                    ID_id_similar = (obj_id * (ID_step2 == obj_id_similar)).astype(np.uint8)
+                    ID_id += ID_id_similar
+                # detection bbox mask
+                x, y, w, h = bbox[0:4]
+                x = int(x * _W / self.W)
+                y = int(y * _H / self.H)
+                w = int(w * _W / self.W)
+                h = int(h * _H / self.H)
+                mask_det_bbox = np.zeros_like(ID_id).astype(np.uint8)
+                cv2.rectangle(mask_det_bbox, (x, y), (x+w, y+h), color=255, thickness=-1)
+                # leave bbox region from specific ID map
+                ID_id = cv2.bitwise_and(ID_id, ID_id, mask=mask_det_bbox)
+                # add to template
+                ID_step3 += ID_id
+            ID_step3_color = np.zeros((_H, _W, 3)).astype(np.uint8)
+            for h in range(_H):
+                for w in range(_W):
+                    ID_step3_color[h, w, :] = color(ID_step3[h, w])
+            if args.opt.save_pose_prediction_maps:
+                cv2.imwrite(save_path + '/STEP{}_ID_3.png'.format(step_num), ID_step3_color)            
 
             # PnP
             args.pose_return_dict[step_num] = []
-
             obj_ids = [args.cad_names.index(model) + 1 for model in cad_models]
             R_list = []
-            for obj_id in obj_ids:
-                R, T = self.PnP(obj_id, ID, U, V, W, args.K)
+            parts_loc = args.parts_loc[step_num]
+            for obj_id, bbox in zip(obj_ids, parts_loc):
+                x, y, w, h = bbox[0:4]
+                x = int(x * _W / self.W)
+                y = int(y * _H / self.H)
+                w = int(w * _W / self.W)
+                h = int(h * _H / self.H)
+                resized_bbox = [x, y, w, h]
+                R, T = self.PnP(obj_id, resized_bbox, ID_step3, U, V, W, args.K)
                 R_list.append(R)
                 RT = np.concatenate((R, T), axis=1)
                 args.pose_return_dict[step_num].append(RT)
 
             modifier_matrix = np.array([1, 1, -1, 1, 1, 1, -1, 1, -1, -1, 1, 1]).reshape(3, 4)
 
-            # Post process PnP (z-axis flipped issue step1)
+            # Post Process 1 : Axis flip (step1)
             if len(set(obj_ids) - {2, 3, 7, 8}) == 0:
                 for idx in range(len(args.pose_return_dict[step_num])):
                     z_direction = R_list[idx] @ np.array([0, 0, 1]).reshape(-1, 1)
@@ -353,13 +444,35 @@ class InitialPoseEstimation():
                     if z_direction > 0: # z_axis heading down
                         args.pose_return_dict[step_num][idx] *= modifier_matrix
 
-            # Post process PnP (z-axis flipped issue)
+            # Post Process 1 : Axis flip (!step1)
             R_base = None # If part5 or part6 is detected, set their pose as base_pose
             if 5 in obj_ids:
                 R_base = R_list[obj_ids.index(5)]
             if 6 in obj_ids:
                 R_base = R_list[obj_ids.index(6)]
             if R_base is not None:
+                def x_axis_angle_diff(R1, R2):
+                    if np.array_equal(R1, R2):
+                        return 0.0
+                    else:
+                        x1 = R1 @ np.array([1, 0, 0])
+                        x2 = R2 @ np.array([1, 0, 0])
+                        unit_vector_x1 = x1 / np.linalg.norm(x1)
+                        unit_vector_x2 = x2 / np.linalg.norm(x2)
+                        dot_product = np.dot(unit_vector_x1, unit_vector_x2)
+                        angle_diff = np.rad2deg(np.arccos(dot_product))
+                        return angle_diff
+                def y_axis_angle_diff(R1, R2):
+                    if np.array_equal(R1, R2):
+                        return 0.0
+                    else:
+                        y1 = R1 @ np.array([0, 0, 1])
+                        y2 = R2 @ np.array([0, 0, 1])
+                        unit_vector_y1 = y1 / np.linalg.norm(y1)
+                        unit_vector_y2 = y2 / np.linalg.norm(y2)
+                        dot_product = np.dot(unit_vector_y1, unit_vector_y2)
+                        angle_diff = np.rad2deg(np.arccos(dot_product))
+                        return angle_diff
                 def z_axis_angle_diff(R1, R2):
                     if np.array_equal(R1, R2):
                         return 0.0
@@ -371,26 +484,106 @@ class InitialPoseEstimation():
                         dot_product = np.dot(unit_vector_z1, unit_vector_z2)
                         angle_diff = np.rad2deg(np.arccos(dot_product))
                         return angle_diff
-                angle_diff_list = [z_axis_angle_diff(R_base, R) for R in R_list]
-                # print('obj_ids :', obj_ids)
-                # print('angle_diff_list:', angle_diff_list)
-                for idx in range(len(args.pose_return_dict[step_num])):
-                    angle_diff = angle_diff_list[idx]
-                    obj_id = obj_ids[idx]
-                    if obj_id in [1, 2, 3, 4, 7, 8]: # for objects that z-axis is often flipped
+                x_axis_angle_diff_list = [x_axis_angle_diff(R_base, R) for R in R_list]
+                y_axis_angle_diff_list = [y_axis_angle_diff(R_base, R) for R in R_list]
+                z_axis_angle_diff_list = [z_axis_angle_diff(R_base, R) for R in R_list]
+                if args.opt.print_pose_flip:
+                    print('obj_ids :', obj_ids)
+                    print('x_axis_angle_diff_list:', x_axis_angle_diff_list)
+                    print('y_axis_angle_diff_list:', y_axis_angle_diff_list)
+                    print('z_axis_angle_diff_list:', z_axis_angle_diff_list)
+
+                def need_axis_flip(idx, obj_id, axis):
+                    if obj_id in [5, 6]: # skip part5, part6
+                        return 0
+                    else:
+                        if axis == 'x':
+                            angle_diff_list = x_axis_angle_diff_list
+                        elif axis == 'y':
+                            angle_diff_list = y_axis_angle_diff_list
+                        elif axis == 'z':
+                            angle_diff_list = z_axis_angle_diff_list
+                        angle_diff = angle_diff_list[idx]
                         if np.abs(angle_diff - 45) < 20 or np.abs(angle_diff - 135) < 20:
-                            if args.opt.print_z_axis_flip:
-                                print('z-axis flip : part{} angle_diff {}'.format(obj_id, angle_diff))
-                            # far from 90 degrees angle diff with part 5 or part 6
-                            args.pose_return_dict[step_num][idx] *= modifier_matrix
-                            pass
-                            
+                            return 1
+                        else:
+                            return 0
+
+                x_axis_need_flip = [need_axis_flip(idx, obj_id, 'x') for idx, obj_id in enumerate(obj_ids)]
+                y_axis_need_flip = [need_axis_flip(idx, obj_id, 'y') for idx, obj_id in enumerate(obj_ids)]
+                z_axis_need_flip = [need_axis_flip(idx, obj_id, 'z') for idx, obj_id in enumerate(obj_ids)]
+                if args.opt.print_pose_flip:
+                    print('x_axis_need_flip:', x_axis_need_flip)
+                    print('y_axis_need_flip:', y_axis_need_flip)
+                    print('z_axis_need_flip:', z_axis_need_flip)
+
+                for idx in range(len(args.pose_return_dict[step_num])):
+                    if x_axis_need_flip[idx] == 1 or y_axis_need_flip[idx] == 1 or z_axis_need_flip[idx] == 1:
+                        args.pose_return_dict[step_num][idx] *= modifier_matrix
+                        if args.opt.print_pose_flip:
+                            print('flipped axis of part{}'.format(obj_ids[idx])) 
+            
+            if args.opt.use_part4_direction_estimation:
+                # Post Process 2 : Flip Part4
+                part_images = []
+                part_images_torch = []
+                H, W = args.steps[step_num].shape[:2]
+                for i, crop_region in enumerate(args.parts_loc[step_num]):
+                    x, y, w, h = crop_region[:4]
+                    margin = 0
+                    t = max(0, y - margin)
+                    b = min(H, y + h + margin)
+                    l = max(0, x - margin)
+                    r = min(W, x + w + margin)
+                    part_image = args.steps[step_num][t:b,l:r]
+                    part_image = cv2.resize(part_image, (224, 224))
+                    part_images.append(part_image)
+
+                pred_directions = args.part4dir_model.test(part_images)
+                cad_models = args.cad_models[step_num]
+                obj_ids = [args.cad_names.index(model) + 1 for model in cad_models]
+                directions = []
+                for idx in range(len(args.pose_return_dict[step_num])):
+                    RT = np.vstack((args.pose_return_dict[step_num][idx], np.array([0, 0, 0, 1])))
+                    t = RT[:3, 3].reshape(3, 1)
+                    z_h = np.array([0, 0, 1, 1]).reshape(4, 1)
+                    z_im = RT.dot(z_h)
+                    d = z_im[2] - t[2]
+                    if d >= 0:
+                        direction = 1
+                    else:
+                        direction = 0
+                    directions.append(direction)
+
+                if args.opt.print_pose_flip:
+                    print('obj_ids:', obj_ids)
+                    print('directions:', directions)
+                    print('pred_directions:', pred_directions)
+
+                for idx in range(len(args.pose_return_dict[step_num])):
+                    obj_id = obj_ids[idx]
+                    pred_direction = pred_directions[idx]
+                    direction = directions[idx]
+                    if obj_id == 4:
+                        if pred_direction != direction:
+                            R = args.pose_return_dict[step_num][idx][:3, :3]
+                            modifier_matrix_1 = np.array([-1, 0, 0, 0, 1, 0, 0, 0, -1]).reshape(3, 3)
+                            R = R @ modifier_matrix_1
+                            args.pose_return_dict[step_num][idx][:3, :3] = R
+                            if args.opt.print_pose_flip:
+                                print('flipped part4 : pred direction {}, direction {}'.format(pred_direction, direction))
+
+                args.part4dir_model.save_part4dir(step_num, directions, pred_directions, part_images)                       
 
 
-    def PnP(self, obj_id, ID, U, V, W, K):
+    def PnP(self, obj_id, resized_bbox, ID, U, V, W, K):
         args = self.args
         # leave only region of object of interest
         mask = (255 * (ID == obj_id)).astype(np.uint8)
+        x, y, w, h = resized_bbox
+        mask_det_bbox = np.zeros_like(ID).astype(np.uint8)
+        cv2.rectangle(mask_det_bbox, (x, y), (x+w, y+h), color=255, thickness=-1)
+        mask = cv2.bitwise_and(mask, mask, mask=mask_det_bbox)
         # handle (part5 or part6) region
         if obj_id in [5, 6]:
             obj_id_sim = 5 + 6
@@ -435,15 +628,10 @@ class InitialPoseEstimation():
             return np.eye(3), np.array([0, 0, 25]).reshape(3, 1)
 
 
-    def visualize(self, args, step_num, save_sep=True):
+    def visualize(self, args, step_num):
         color = Color()
-        save_sep = args.opt.save_pose_visualization_separate
         if args.opt.save_pose_visualization:
             step_img = args.steps[step_num].copy()
-            if save_sep:
-                step_imgs = []
-                for i in range(len(args.cad_names)):
-                    step_imgs.append(step_img.copy())
             H, W, _ = step_img.shape
             cad_models = args.cad_models[step_num]
             obj_ids = [int(x.replace('part', '')) for x in cad_models]
@@ -464,9 +652,6 @@ class InitialPoseEstimation():
                 projected_2d_pts[:, 1] = np.clip(projected_2d_pts[:, 1], 0, H - 1)
                 for pt in projected_2d_pts:
                     cv2.circle(step_img, (pt[0], pt[1]), 7, pts_color, -1)
-                if save_sep:
-                    for pt in projected_2d_pts:
-                        cv2.circle(step_imgs[obj_idx], (pt[0], pt[1]), 7, pts_color, -1)
                 
                 # draw axes
                 arrow_length = 1
@@ -485,21 +670,7 @@ class InitialPoseEstimation():
                 cv2.arrowedLine(step_img, tuple(center), tuple(yaxis), (0, 255, 255), 8)
                 cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (0, 0, 0), 12)
                 cv2.arrowedLine(step_img, tuple(center), tuple(zaxis), (153, 0, 0), 8)
-                if save_sep:
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 0), 12)
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(xaxis), (0, 0, 255), 8)
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 0, 0), 12)
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(yaxis), (0, 255, 255), 8)
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (0, 0, 0), 12)
-                    cv2.arrowedLine(step_imgs[obj_idx], tuple(center), tuple(zaxis), (153, 0, 0), 8)
-            cv2.imwrite(args.opt.initial_pose_estimation_visualization_path + '/STEP_{}.png'.format(step_num), step_img)
-            if save_sep:
-                template = []
-                for i in range(len(args.cad_names)):
-                    step_img_sep = step_imgs[i]
-                    template = np.concatenate((template, step_img_sep), axis=1) if len(template) else step_img_sep
-                cv2.imwrite(args.opt.initial_pose_estimation_visualization_separate_path + '/STEP_{}.png'.format(step_num), template)
-        
+            cv2.imwrite(args.opt.initial_pose_estimation_visualization_path + '/STEP_{}.png'.format(step_num), step_img)        
 
 
 
@@ -523,9 +694,9 @@ class InitialPoseEstimation():
     def save_part_id_pose(self, args, step_num, matched_poses):
         if args.opt.save_part_id_pose:
             cad_models = args.cad_models[step_num]
-            part_imgs = args.parts_bboxed[step_num]
-            for i, (matched_pose, cad_model, part_img) in enumerate(zip(matched_poses, cad_models, part_imgs)):
-                plt.imsave(args.opt.part_id_pose_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img)
+            part_imgs_bboxed = args.parts_bboxed[step_num]
+            for i, (matched_pose, cad_model, part_img_bboxed) in enumerate(zip(matched_poses, cad_models, part_imgs_bboxed)):
+                plt.imsave(args.opt.part_id_pose_path + '/STEP{}_part{}_bbox'.format(step_num, i), part_img_bboxed)
                 plt.clf()
                 plt.figure(figsize=(4, 4))
                 plt.axis('off')

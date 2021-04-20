@@ -26,9 +26,10 @@ def fastener_loader(self, cut_image, component_list, fasteners_loc={}):
     thick_vertical_eraser = np.ones((1,3))
     horizon_eraser = np.ones((3,1))
 
-    thick_vertical_erase_sub = cv2.erode(inv,thick_vertical_eraser,iterations=2)
-    thick_vertical_erase = cv2.dilate(thick_vertical_erase_sub,thick_vertical_eraser,iterations=2)
-    thin_vertical_lines_sub = inv - thick_vertical_erase
+    # thick_vertical_erase_sub = cv2.erode(inv,thick_vertical_eraser,iterations=2)
+    # thick_vertical_erase = cv2.dilate(thick_vertical_erase_sub,thick_vertical_eraser,iterations=2)
+    # thin_vertical_lines_sub = inv - thick_vertical_erase
+    thin_vertical_lines_sub = inv
     thin_vertical_lines = np.clip(thin_vertical_lines_sub,0,1)
     
     horizon_erase_sub = cv2.erode(thin_vertical_lines,horizon_eraser,iterations=10)

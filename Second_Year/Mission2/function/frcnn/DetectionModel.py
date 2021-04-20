@@ -282,7 +282,11 @@ class DetectionModel():
                 if key not in bboxes:
                     continue
                 bbox = np.array(bboxes[key])
-                new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=-1)
+                new_boxes, new_probs = roi_helpers.non_max_suppression_fast(bbox, np.array(probs[key]), overlap_thresh=0)
+                if len(new_boxes) >= 2:
+                    new_boxes = new_boxes[:2]
+                    new_probs = new_probs[:2]
+
                 for jk in range(len(new_boxes)):
                     (x1, y1, x2, y2) = new_boxes[jk, :]
 

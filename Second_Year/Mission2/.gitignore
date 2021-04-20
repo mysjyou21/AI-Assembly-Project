@@ -8,6 +8,7 @@ output/**
 intermediate_results/**
 input/*/cad/*/*.pickle
 SAVED/
+Temp/
 function/utilities/stdout.txt
 input/test/*
 input/missiion2_syn/*
@@ -16,3 +17,4 @@ input/*/cad/center.json
 eval.sh
 eval.py
 isaac/
+log.txt

@@ -8,14 +8,15 @@ def parse_args(description='Robot'):
     parser.add_argument('--input_path', default='./input')
     parser.add_argument('--intermediate_results_path', default='./intermediate_results')
     parser.add_argument('--det_config1_name', default='./model/detection/fine_tuned/12.pickle')
-    parser.add_argument('--det_config2_name', default='./model/detection/mission2/parts.pickle')
-    parser.add_argument('--parts_threshold', default=0.8, type=float, help='confidence threshold value for parts detection')
+    parser.add_argument('--det_config2_name', default='./model/detection/mission2/parts_1.pickle')
+    parser.add_argument('--parts_threshold', default=0.7, type=float, help='confidence threshold value for parts detection')
     parser.add_argument('--ocr_flip_weight_path', default=os.path.join('./model', 'OCR', 'flip_weight'))
     parser.add_argument('--ocr_class_weight_path', default=os.path.join('./model', 'OCR', 'weight'))
     parser.add_argument('--retrieval_model_path', default=os.path.join('./model', 'retrieval', 'ckpt'))
     parser.add_argument('--pose_model_path', default=os.path.join('./model', 'pose', 'mission2'))
     parser.add_argument('--pose_model_adr', default='', help='If defined, overrides pose_model_path')
     parser.add_argument('--fastener_model_path', default=os.path.join('./model', 'fastener', 'mission2'))
+    parser.add_argument('--part4dir_model_path', default=os.path.join('./model', 'part4dir'))
 
     parser.add_argument('--output_dir', default='./output')
     parser.add_argument('--eval_print', type=str2bool, default=False)
@@ -35,7 +36,7 @@ def parse_args(description='Robot'):
     parser.add_argument('--save_part_image', type=str2bool, default=True)
     parser.add_argument('--save_pose_prediction_maps', type=str2bool, default=True)
     parser.add_argument('--save_pose_visualization', type=str2bool, default=True)
-    parser.add_argument('--save_pose_visualization_separate', type=str2bool, default=True)
+    parser.add_argument('--save_part4dir', type=str2bool, default=True)
     parser.add_argument('--save_part_id_pose', type=str2bool, default=True)
     parser.add_argument('--save_fastener_prediction_maps', type=str2bool, default=True)
     parser.add_argument('--save_fastener_visualization', type=str2bool, default=True)
@@ -44,10 +45,12 @@ def parse_args(description='Robot'):
     parser.add_argument('--mid_RT_on', type=str2bool, default=True)
     parser.add_argument('--hole_detection_on', type=str2bool, default=True)
     parser.add_argument('--use_fine_tuned_model_detection', type=str2bool, default=True)
-    parser.add_argument('--use_general_model_pose', type=str2bool, default=False)
-    parser.add_argument('--save_pose_indiv', type=str2bool, default=False)
-    parser.add_argument('--print_z_axis_flip', type=str2bool, default=False)
-    parser.add_argument('--pose_interpolation', default='nearest', help='[nearest, area]')
+    parser.add_argument('--use_challenge_detection_model', type=str2bool, default=False)
+    parser.add_argument('--use_challenge_pose_model', type=str2bool, default=False)
+    parser.add_argument('--use_part4_direction_estimation', type=str2bool, default=True)
+    parser.add_argument('--save_pose_indiv', type=str2bool, default=True)
+    parser.add_argument('--print_pose_flip', type=str2bool, default=False)
+    parser.add_argument('--no_hole', type=str2bool, default=False, help='skip hole, action grouping')
 
     ############# temp ###########
     parser.add_argument('--temp', type=str2bool, default=False)
@@ -102,7 +105,7 @@ def init_args(description='Robot'):
     opt.initial_pose_estimation_adr = os.path.join(opt.initial_pose_estimation_path, 'initial_pose_estimation.json')
     opt.initial_pose_estimation_prediction_maps_path = os.path.join(opt.initial_pose_estimation_path, 'prediction_maps')
     opt.initial_pose_estimation_visualization_path = os.path.join(opt.initial_pose_estimation_path, 'visualization')
-    opt.initial_pose_estimation_visualization_separate_path = os.path.join(opt.initial_pose_estimation_path, 'visualization_separate')
+    opt.initial_pose_estimation_part4dir_path = os.path.join(opt.initial_pose_estimation_path, 'part4_dir')
     opt.fastener_detection_path = os.path.join(opt.intermediate_results_path, 'fastener_detection')
     opt.fastener_detection_prediction_maps_path = os.path.join(opt.fastener_detection_path, 'prediction_maps')
     opt.fastener_detection_visualization_path = os.path.join(opt.fastener_detection_path, 'visualization')
@@ -133,8 +136,10 @@ def init_args(description='Robot'):
 
     if not opt.use_fine_tuned_model_detection:
         opt.det_config2_name = './model/detection/mission2/parts_nft.pickle'
-    if opt.use_general_model_pose:
-        opt.pose_model_adr = './model/pose/mission2/correspondence_block_general.pt'
+    if opt.use_challenge_detection_model:
+        opt.det_config2_name = './model/detection/mission2/parts.pickle'
+    if opt.use_challenge_pose_model:
+        opt.pose_model_adr = './model/pose/mission2/correspondence_block_finetuned.pt'
 
     ####### Temp ########
     opt.temp = str2bool(opt.temp)
@@ -148,9 +153,7 @@ def str2bool(string):
         bool_type = string
     else:
         assert string == 'True' or string == 'False'
-
         bool_type = True if string == 'True' else False
-
     return bool_type
 
 

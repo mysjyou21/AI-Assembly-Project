@@ -8,7 +8,6 @@ def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
     ######## step_num-1의 중간산출물의 hole 위치 및 hole pair 찾기 ##########
     base_id_list = list(base_hole_dict.keys())
     mid_id_list = list(mid_hole_dict.keys())
-    mid_base = list(set(mid_id_list).intersection(base_id_list))
     mid_permu = list(permutations(mid_id_list, 2))
     mid_RT = np.zeros([3,4])
     find_mid = False
@@ -33,8 +32,12 @@ def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
         mid_checked = [mp1, mp2]
 
     ######## 중간산출물을 이루는 기본부품간의 pose가 일치하는게 없을시, 중간산출물을 이루는 아무 파트중 하나의 pose로 통일 ####
+    mid_base = list(set(mid_id_list).intersection(base_id_list))
+    duplicate_id = [x.split('_')[0] for x in mid_base if int(x.split('_')[1]) > 1]
+    mid_base = [x for x in mid_base if x.split('_')[0] not in duplicate_id]
     if not find_mid and len(mid_base) > 0:
         for prior in base_priority:
+            prior = prior + '_1'
             if prior in mid_base:
                 id = prior
                 mid_RT = holepair_to_RT(base_hole_dict[id], mid_hole_dict[id])

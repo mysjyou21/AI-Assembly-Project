@@ -1,0 +1,70 @@
+{
+	"File_name": "step1_a",
+	"data": {
+		"PartName": "step1_a.STL",
+		"MinPointX": -90.00003051757812,
+		"MinPointY": -24.5000057220459,
+		"MinPointZ": 10.000001907348633,
+		"MaxPointX": -70.00003051757812,
+		"MaxPointY": -11.500005722045898,
+		"MaxPointZ": 40.00000762939453,
+		"SizeToAxisX": 20.0,
+		"SizeToAxisY": 13.0,
+		"SizeToAxisZ": 30.0000057220459,
+		"CenterPointX": -80.00003051757812,
+		"CenterPointY": -18.0000057220459,
+		"CenterPointZ": 25.000004768371582,
+		"hole": {
+			"part3_1-hole_1": {
+				"CenterX": -135.00003051757812,
+				"CenterY": -16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part3_1-hole_2": {
+				"CenterX": 135.00003051757812,
+				"CenterY": -16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part3_1-hole_3": {
+				"CenterX": -135.00003051757812,
+				"CenterY": 0.0,
+				"CenterZ": 10.0
+			},
+			"part3_1-hole_4": {
+				"CenterX": 135.00003051757812,
+				"CenterY": 0.0,
+				"CenterZ": 10.0
+			},
+			"part3_1-hole_5": {
+				"CenterX": -135.00003051757812,
+				"CenterY": 16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"part3_1-hole_6": {
+				"CenterX": 135.00003051757812,
+				"CenterY": 16.000003814697266,
+				"CenterZ": 10.0
+			},
+			"C122620_1-hole_1": {
+				"CenterX": 80.00003051757812,
+				"CenterY": -23.00000762939453,
+				"CenterZ": 30.00000762939453
+			},
+			"C122620_1-hole_2": {
+				"CenterX": 80.00003051757812,
+				"CenterY": -24.50000762939453,
+				"CenterZ": 30.00000762939453
+			},
+			"C122620_2-hole_1": {
+				"CenterX": -80.00003051757812,
+				"CenterY": -23.00000762939453,
+				"CenterZ": 30.00000762939453
+			},
+			"C122620_2-hole_2": {
+				"CenterX": -80.00003051757812,
+				"CenterY": -24.50000762939453,
+				"CenterZ": 30.00000762939453
+			}
+		}
+	}
+}
