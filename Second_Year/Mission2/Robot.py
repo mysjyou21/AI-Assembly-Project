@@ -891,7 +891,7 @@ class Assembly():
                     for idx in range(0,2):
                         if len(step_part[idx][0])==7:
                             part_id.append(step_part[idx][0][:5])
-                        else: 
+                        else:
                             part_id.append(step_part[idx][0])
                     if part_id == ['part2','part3']:
                         temp = copy.deepcopy(step_part)
@@ -1249,8 +1249,9 @@ class Assembly():
         self.mid_RT = mid_RT
 
         if find_mid:
+            mid_checked_unindexed = [x.split('_')[0] for x in mid_checked]
             for key in self.part_write[step_num]:
-                if key in mid_checked:
+                if key in mid_checked_unindexed:
                     self.part_write[step_num][key] += [1]
                 else:
                     self.part_write[step_num][key] += [0]

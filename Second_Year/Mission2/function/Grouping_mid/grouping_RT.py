@@ -4,6 +4,7 @@ import random
 
 base_priority = ['part5', 'part6', 'part4', 'part2', 'part7', 'part3', 'part8', 'part1']
 accurate_part = ['part5', 'part6']
+
 def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
     ######## step_num-1의 중간산출물의 hole 위치 및 hole pair 찾기 ##########
     base_id_list = list(base_hole_dict.keys())
@@ -16,16 +17,16 @@ def baseRT_to_midRT(base_hole_dict, mid_hole_dict, HOLE_DIST_THR=0.5):
     mean_dist = {"dummy": 100}
     for i, mid_pair in enumerate(mid_permu):
         mp1, mp2 = mid_pair
-        if mp1 in base_id_list and mp2 in base_id_list and mp1 in accurate_part:
+        if mp1 in base_id_list and mp2 in base_id_list and mp1.split('_')[0] in accurate_part:
             mid_RT1 = holepair_to_RT(base_hole_dict[mp1], mid_hole_dict[mp1])
             mid_hole_2 = transform_hole(mid_RT1, mid_hole_dict[mp2])
 
             dist = np.mean(hole_distance(mid_hole_2, base_hole_dict[mp2]))
-            mean_dist['_'.join([mp1, mp2])] = dist
+            mean_dist['-'.join([mp1, mp2])] = dist
             #print('HOLE DISTANCE: %s and %s : %.5f'%(mp1, mp2, dist))
     min_pair, min_dist = min(mean_dist.items(), key=lambda x: x[1])
     if min_dist < HOLE_DIST_THR:
-        mp1, mp2 = min_pair.split('_')
+        mp1, mp2 = min_pair.split('-')
         print('MID CHECKED: %s and %s : %.4f'%(mp1, mp2, min_dist))
         mid_RT = mid_RT1
         find_mid = True
