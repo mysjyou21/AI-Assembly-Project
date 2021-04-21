@@ -95,7 +95,7 @@ class Assembly():
         self.parts_info = {}  # {step_num: list of (part_id, part_pos, hole_info)}
         self.parts_info_indexed = {}
         self.mid_base = {} # {step_num: [base parts which consist of mid part]}
-        self.is_fail = False # possibility for hole matching failure
+        self.is_fail = False # possibility for hole matching failurer
 
         # component recognition results, string
         self.connectors_serial_OCR = {}
@@ -188,6 +188,7 @@ class Assembly():
 
         print([os.path.basename(x) for x in self.step_names])
 
+
     def detect_step_component(self, step_num, print_result=True):  # 준형
         """
         Detect components(a grouped action information) in a step
@@ -223,6 +224,40 @@ class Assembly():
         self.connectors_mult_OCR[step_num] = self.connector_mult_OCR
         self.group_components(step_num)
 
+        # self.detect_step_component_visualize(step_num)
+
+        # update self.used_parts[step_num] / self.unused_parts[step_num + 1] / self.used_parts_cum[step_num]
+        self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
+        self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
+        self.used_parts_nonunique[step_num] = sorted([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])
+        if step_num == 1:
+            self.used_parts_nonunique_cumulative[step_num - 1] = [] # dummy
+            self.used_parts_nonunique_cumulative[step_num] = self.used_parts_nonunique[step_num]
+        else:
+            used_parts_nonunique_cumulative_prev = self.used_parts_nonunique_cumulative[step_num - 1]
+            used_parts_nonunique = self.used_parts_nonunique[step_num]
+            used_parts_nonunique_cumulative = []
+            for part_id in range(1, 9):
+                part_id_count = max(used_parts_nonunique.count(part_id), used_parts_nonunique_cumulative_prev.count(part_id))
+                for _ in range(part_id_count):
+                    used_parts_nonunique_cumulative.append(part_id)
+            self.used_parts_nonunique_cumulative[step_num] = used_parts_nonunique_cumulative
+
+         # crop part images from step images with detection results
+        step_part_images = []
+        step_part_images_bboxed = []
+        for i, crop_region in enumerate(self.parts_loc[step_num]):
+            x, y, w, h = crop_region[:4]
+            step_part_image = self.steps[step_num][y:y + h, x:x + w]
+            step_part_images.append(step_part_image)
+            step_part_image_bboxed = self.steps[step_num].copy()
+            step_part_image_bboxed = cv2.rectangle(step_part_image_bboxed, (x, y), (x + w, y + h), color=(0, 0, 255), thickness=2)
+            step_part_images_bboxed.append(step_part_image_bboxed)
+        self.parts[step_num] = step_part_images
+        self.parts_bboxed[step_num] = step_part_images_bboxed
+
+
+    def detect_step_component_visualize(self, step_num):
         # visualization(준형) - image/bounding boxes (parts 제외, OCR결과도 그림에) self.opt.group_image_path -> 수정(한 cut 이미지에), flag self.opt.detection_path에 추가로
         # num of colors in palette: 7
         palette = [(0, 0, 255), (0, 128, 255), (0, 255, 255), (0, 255, 0), (255, 128, 0), (255, 0, 128), (255, 0, 255)]
@@ -305,19 +340,6 @@ class Assembly():
             img_name = os.path.join(self.opt.part_image_path, '%02d.png' % step_num)
             cv.imwrite(img_name, step_part_img)
 
-        # crop part images from step images with detection results
-        step_part_images = []
-        step_part_images_bboxed = []
-        for i, crop_region in enumerate(self.parts_loc[step_num]):
-            x, y, w, h = crop_region[:4]
-            step_part_image = self.steps[step_num][y:y + h, x:x + w]
-            step_part_images.append(step_part_image)
-            step_part_image_bboxed = self.steps[step_num].copy()
-            step_part_image_bboxed = cv2.rectangle(step_part_image_bboxed, (x, y), (x + w, y + h), color=(0, 0, 255), thickness=2)
-            step_part_images_bboxed.append(step_part_image_bboxed)
-        self.parts[step_num] = step_part_images
-        self.parts_bboxed[step_num] = step_part_images_bboxed
-
         # save detection result images
         if self.opt.save_detection:
             if step_num == 1:
@@ -332,22 +354,6 @@ class Assembly():
                 cv2.imwrite(self.opt.detection_path + '/STEP{}_part{}.png'.format(step_num, i),
                             self.parts[step_num][i])
 
-        # update self.used_parts[step_num] / self.unused_parts[step_num + 1] / self.used_parts_cum[step_num]
-        self.used_parts[step_num] = sorted(list(set([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])))
-        self.unused_parts[step_num + 1] = sorted(list(set(self.unused_parts[step_num]) - set(self.used_parts[step_num])))
-        self.used_parts_nonunique[step_num] = sorted([int(part_id.replace('part', '')) for part_id in self.parts_info[step_num]])
-        if step_num == 1:
-            self.used_parts_nonunique_cumulative[step_num - 1] = [] # dummy
-            self.used_parts_nonunique_cumulative[step_num] = self.used_parts_nonunique[step_num]
-        else:
-            used_parts_nonunique_cumulative_prev = self.used_parts_nonunique_cumulative[step_num - 1]
-            used_parts_nonunique = self.used_parts_nonunique[step_num]
-            used_parts_nonunique_cumulative = []
-            for part_id in range(1, 9):
-                part_id_count = max(used_parts_nonunique.count(part_id), used_parts_nonunique_cumulative_prev.count(part_id))
-                for _ in range(part_id_count):
-                    used_parts_nonunique_cumulative.append(part_id)
-            self.used_parts_nonunique_cumulative[step_num] = used_parts_nonunique_cumulative
 
     def component_detector(self, step_num):  # 준형
         """ Detect the components in the step image, return the detected components' locations (x, y, w, h, group_index)
@@ -645,6 +651,10 @@ class Assembly():
                     json.dump(self.pose_indiv, f, indent=2, sort_keys=True)
             except:
                 pass
+
+        # save detection results
+        self.detect_step_component_visualize(step_num)
+
 
     def fastener_detector(self, step_num):
         """ Fastener detection

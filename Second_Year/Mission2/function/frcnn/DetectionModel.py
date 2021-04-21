@@ -307,7 +307,6 @@ class DetectionModel():
 
         # 그다음 overlap_thresh = 0으로 NMS 수행 (iou가 0, 즉 겹치지 않는 bbox들은 우선 살아남게)
         new_boxes, new_probs = roi_helpers.non_max_suppression_fast(np.array(bbox_56), np.array(prob_56), overlap_thresh=0.4)
-
         if len(new_boxes) == 0:
             pass
         elif len(new_boxes) == 1:

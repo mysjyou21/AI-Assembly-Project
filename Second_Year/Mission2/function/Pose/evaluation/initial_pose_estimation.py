@@ -219,6 +219,49 @@ class InitialPoseEstimation():
                 cv2.imwrite(save_path + '/STEP{}_W.png'.format(step_num), W)
                 cv2.imwrite(save_path + '/STEP{}_UVW.png'.format(step_num), UVW)
 
+            # STEP0_1 : switch bbox of 'part5' and 'part6' if detection results doesn't match the segmentation results
+            # number of 'part5' and 'part6' in args.cad_models[step_num] should be no more than 1.
+            if 'part5' in args.cad_models[step_num] and 'part6' in args.cad_models[step_num]:
+                
+                
+                ID_part5 = np.where(ID == 5, 1, 0).astype(np.uint8)
+                ID_part6 = np.where(ID == 6, 1, 0).astype(np.uint8)
+                # count part5, part6 pixels in part5 bbox
+                idx_part5 = args.cad_models[step_num].index('part5')
+                part5_bbox = args.parts_loc[step_num][idx_part5]
+                x = int(part5_bbox[0] * _W / self.W)
+                y = int(part5_bbox[1] * _H / self.H)
+                w = int(part5_bbox[2] * _W / self.W)
+                h = int(part5_bbox[3] * _H / self.H)
+                ID_part5_part5_region = ID_part5[y:y+h, x:x+w]
+                num_pixels_part5_in_part5_region = len(np.nonzero(ID_part5_part5_region)[0])
+                ID_part6_part5_region = ID_part6[y:y+h, x:x+w]
+                num_pixels_part6_in_part5_region = len(np.nonzero(ID_part6_part5_region)[0])             
+                 # count part5, part6 pixels in part6 bbox
+                idx_part6 = args.cad_models[step_num].index('part6')
+                part6_bbox = args.parts_loc[step_num][idx_part6]
+                x = int(part6_bbox[0] * _W / self.W)
+                y = int(part6_bbox[1] * _H / self.H)
+                w = int(part6_bbox[2] * _W / self.W)
+                h = int(part6_bbox[3] * _H / self.H)
+                ID_part5_part6_region = ID_part5[y:y+h, x:x+w]
+                num_pixels_part5_in_part6_region = len(np.nonzero(ID_part5_part6_region)[0])
+                ID_part6_part6_region = ID_part6[y:y+h, x:x+w]
+                num_pixels_part6_in_part6_region = len(np.nonzero(ID_part6_part6_region)[0])
+                # switch
+                part56_pixel_count = [num_pixels_part5_in_part5_region, num_pixels_part6_in_part5_region,
+                                      num_pixels_part5_in_part6_region, num_pixels_part6_in_part6_region]
+                part56_pixel_count = [pixel_count if pixel_count > 0 else 1 for pixel_count in part56_pixel_count] # prevent division by zero
+                more_part6_pixels_in_part5_region = True if part56_pixel_count[1] / part56_pixel_count[0] > 3.0 else False
+                more_part5_pixels_in_part6_region = True if part56_pixel_count[2] / part56_pixel_count[3] > 3.0 else False
+                if more_part6_pixels_in_part5_region and more_part5_pixels_in_part6_region:
+                    args.cad_models[step_num][idx_part5] = 'part6'
+                    args.parts_info[step_num][idx_part5] = 'part6'
+                    args.parts_info_indexed[step_num][idx_part5] = 'part6_1'
+                    args.cad_models[step_num][idx_part6] = 'part5'
+                    args.parts_info[step_num][idx_part6] = 'part5'
+                    args.parts_info_indexed[step_num][idx_part6] = 'part5_1'
+            
             # STEP1 : post-process ID-map with detection classes (part2, part3, part7, part8)
             parts_loc = args.parts_loc[step_num]
             cad_models = args.cad_models[step_num]
