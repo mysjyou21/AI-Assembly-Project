@@ -162,6 +162,9 @@ class Assembly():
         for cut in cuts:
             self.cuts.append(cut)
 
+        # 선지 temp for challenge1
+        if self.opt.challenge1: self.opt.starting_cut = 1
+
         # if argument 'starting_cut' is -1(=default value), is_valid_cut function is used.
         idx = 1
         if self.opt.starting_cut == -1:
@@ -255,6 +258,11 @@ class Assembly():
             step_part_images_bboxed.append(step_part_image_bboxed)
         self.parts[step_num] = step_part_images
         self.parts_bboxed[step_num] = step_part_images_bboxed
+
+        if opt.challenge1:
+            self.detect_step_component_visualize(step_num)
+            print('number of circle: %d, number of elements: %d, number of serials: %d' %(len(self.circles_loc[step_num]), len(self.connectors_loc[step_num]), len( self.connectors_serial_loc[step_num])))
+
 
 
     def detect_step_component_visualize(self, step_num):
@@ -531,13 +539,16 @@ class Assembly():
         for serials in serials_list:
             serial_OCR = self.OCR_model.run_OCR_serial(args=self, imgs=serials)
 
-            if (serial_OCR not in true_serials) and (serial_OCR != '') and (serial_OCR != '100001'):
-                count = [0, 0, 0, 0]
-                for idx, key in enumerate(true_serials):
-                    for i in range(6):
-                        if serial_OCR[i] == key[0][i]: count[idx] = count[idx] + 1
-                max_idx = np.argmax(np.asarray(count))
-                serial_OCR = true_serials[max_idx][0]
+            if self.opt.challenge1:
+                pass
+            else:
+                if (serial_OCR not in true_serials) and (serial_OCR != '') and (serial_OCR != '100001'):
+                    count = [0, 0, 0, 0]
+                    for idx, key in enumerate(true_serials):
+                        for i in range(6):
+                            if serial_OCR[i] == key[0][i]: count[idx] = count[idx] + 1
+                    max_idx = np.argmax(np.asarray(count))
+                    serial_OCR = true_serials[max_idx][0]
 
             connector_serial_OCR.append(serial_OCR)
 

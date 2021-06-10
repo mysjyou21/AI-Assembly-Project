@@ -47,9 +47,25 @@ def main():
         minute = int((toc - tic) // 60)
         return minute, sec
 
+    if opt.challenge1:
+        for step in range(start_step, IKEA.num_steps + 1):
+            print('\n\n(step {})\n'.format(step))
+            step_start_time = time.time()
+
+            opt.step_num = False
+            IKEA.detect_step_component(step)
+
+            step_end_time = time.time()
+            step_min, step_sec = get_elapsed_time(step_end_time, step_start_time)
+            total_min, total_sec = get_elapsed_time(step_end_time, total_start_time)
+            if opt.print_time:
+                print('step time : {} min {} sec'.format(step_min, step_sec))
+                print('total time : {} min {} sec'.format(total_min, total_sec))
+
     save_cad_center(initial=True)
 
     for step in range(start_step, IKEA.num_steps + 1):
+        if opt.challenge1: break
         print('\n\n(step {})\n'.format(step))
         step_start_time = time.time()
 

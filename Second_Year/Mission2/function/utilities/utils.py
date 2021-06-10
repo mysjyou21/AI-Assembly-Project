@@ -60,25 +60,51 @@ def resize_cut(img):    # JH
     # img size
     H_img, W_img = img.shape[:2]
 
-    H_target = H_stefan
-    W_temp = int(W_img * H_stefan / H_img)
-    img_temp = cv.resize(img, (W_temp, H_target), interpolation=cv.INTER_AREA)
+    img_ratio = H_img / W_img
+    stefan_ratio = H_stefan / W_stefan
 
-    # if W_temp is longer than W_stefan, crop left & right side of image
-    if W_temp > W_stefan:
-        diff_W = W_temp - W_stefan
-        margin_left = diff_W // 2
-        margin_right = diff_W - margin_left
-        img_resized = img_temp[:, margin_left:-margin_right]
-    # if W_temp is shorter than W_stefan, white-pad left & right side of image
-    elif W_temp < W_stefan:
-        diff_W = W_stefan - W_temp
-        margin_left = diff_W // 2
-        margin_right = diff_W - margin_left
-        img_resized = np.ones((H_stefan, W_stefan, 3), dtype=np.uint8) if len(img.shape) == 3 else np.ones((H_stefan, W_stefan), dtype=np.uint8)
-        img_resized[:, margin_left:-margin_right] = img_temp
-    else:
-        img_resized = img_temp
+    if img_ratio >= stefan_ratio: # should follow H_ratio
+        H_target = H_stefan
+        W_temp = int(W_img * H_stefan / H_img)
+        img_temp = cv.resize(img, (W_temp, H_target), interpolation=cv.INTER_AREA)
+
+        # if W_temp is longer than W_stefan, crop left & right side of image
+        if W_temp > W_stefan:
+            diff_W = W_temp - W_stefan
+            margin_left = diff_W // 2
+            margin_right = diff_W - margin_left
+            img_resized = img_temp[:, margin_left:-margin_right]
+        # if W_temp is shorter than W_stefan, white-pad left & right side of image
+        elif W_temp < W_stefan:
+            diff_W = W_stefan - W_temp
+            margin_left = diff_W // 2
+            margin_right = diff_W - margin_left
+            img_resized = 255*np.ones((H_stefan, W_stefan, 3), dtype=np.uint8) if len(img.shape) == 3 else np.ones((H_stefan, W_stefan), dtype=np.uint8)
+            img_resized[:, margin_left:-margin_right] = img_temp
+        else:
+            img_resized = img_temp
+            
+    else:   # img_ratio < stefan_ratio: # should follow W_ratio
+        W_target = W_stefan
+        H_temp = int(H_img * W_stefan / W_img)
+        img_temp = cv.resize(img, (W_target, H_temp), interpolation=cv.INTER_AREA)
+
+        # if H_temp is longer than H_stefan, crop upper & lower side of image
+        if H_temp > H_stefan:
+            diff_H = H_temp - W_stefan
+            margin_upper = diff_H // 2
+            margin_lower = diff_H - margin_upper
+            img_resized = img_temp[margin_upper:-margin_lower, :]
+        # if H_temp is shorter than H_stefan, white-pad upper & lower side of image
+        elif H_temp < H_stefan:
+            diff_H = H_stefan - H_temp
+            margin_upper = diff_H // 2
+            margin_lower = diff_H - margin_upper
+            img_resized = 255*np.ones((H_stefan, W_stefan, 3), dtype=np.uint8) if len(img.shape) == 3 else np.ones(
+                (H_stefan, W_stefan), dtype=np.uint8)
+            img_resized[margin_upper:-margin_lower, :] = img_temp
+        else:
+            img_resized = img_temp
 
     return img_resized
 
@@ -291,6 +317,7 @@ def grouping(circles, rectangles, connectors, connectors_serial, connectors_mult
     # 1년차 챌린지 1,2에서 받은 이미지들은 사각형 모양 circle이 발견되는 경우가 발생할 때 이미지 내에 원형 모양 circle이 없고, 일반 사각형이 없어서,
     # 이 경우 grouping을 할 때에는 이미지 내에서 circle를 하나도 못 찾은 경우와 동일하게 처리 (검출된 mult, serial 다 동일 group으로 처리
     #(circle을 못 찾아도 grouping은 정상 작동하도록 이렇게 코딩했었음))
+
 
     for rectangle in rectangles_list:
         x_rec, y_rec, w_rec, h_rec = rectangle[:4]

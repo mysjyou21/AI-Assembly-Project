@@ -129,8 +129,6 @@ def map_action(self, circle_labs, circle_nums, act_dic, step_num):
     circle_tools = []
     serials = circle_labs
 
-
-
     for serial in serials:
         act = act_dic[serial]
         circle_actions.append(act[0])

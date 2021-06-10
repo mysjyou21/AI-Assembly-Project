@@ -148,6 +148,8 @@ def main():
                 except Exception as e:
                     logging.error(e)
 
+                if step > 1:
+                    IKEA.make_parts_info_indexed(step)
 
                 if step > 2 and opt.mid_RT_on:
                     print(bcolors.CBLUEBG+"    Mid Pose started"+bcolors.CEND)

@@ -54,6 +54,7 @@ def parse_args(description='Robot'):
 
     ############# temp ###########
     parser.add_argument('--temp', type=str2bool, default=False)
+    parser.add_argument('--challenge1', type=str2bool, default=False)
     ###############################
     ######### print_pred ###########
     parser.add_argument('--print_pred', type=str2bool, default=False)
