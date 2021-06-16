@@ -35,6 +35,8 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
                 distInfo_list = list()
                 for p1 in part_id_list:
                     for p2 in part_id_list:
+                        if (p1 in self.mid_id_list) and (p2 in self.mid_id_list):
+                            continue 
                         if p1 < p2:
                             p1_holeInfo = sorted(part_holeInfo_dict[p1])
                             p2_holeInfo = sorted(part_holeInfo_dict[p2])
@@ -173,25 +175,6 @@ def hole_pair_matching(self, step_num, connector_num, fastenerInfo_list, part_ho
         for f_coord, h_coord in zip(fastener_coord_list, hole_coord_list):
             self.cut_image = cv2.line(self.cut_image, f_coord, h_coord, (255,0,0), 1)
     cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), self.cut_image)
-
-        # inv_img = cv2.line(inv_img, fastener_coord1, fastener_coord2, (0,255,0), 2)
-
-        # hole_coord_list = list()
-        # for part_hole in hole_matching_info:
-        #     part_id = part_hole[0]
-        #     hole_id = part_hole[1]
-        #     hole_info = [x for x in part_holeInfo_dict_original[part_id] if hole_id in x][0]
-        #     h_x = hole_info[1]
-        #     h_y = hole_info[2]
-        #     hole_coord_list.append((h_x,h_y))
-        #     inv_img = cv2.circle(inv_img, (h_x,h_y), 4, (0,0,255), -1)
-
-        # fastener_coord_list = sorted(fastener_coord_list, key=lambda x:x[1])
-        # hole_coord_list = sorted(hole_coord_list, key=lambda x:x[1])
-        # for f_coord, h_coord in zip(fastener_coord_list, hole_coord_list):
-        #     inv_img = cv2.line(inv_img, f_coord, h_coord, (255,0,0), 1)
-    # cv2.imwrite(os.path.join(self.v_dir, str(self.step_num)+'_check_connecting.png'), inv_img)
-    ##########################################################
 
     ##### json에서 읽은 그대로 상태인 hole 이름을, parts_info로 넘겨주기 위한 형태로 변환 #####
     hole_matching_info_list_rename = list()
