@@ -50,7 +50,12 @@ $ bash Anaconda3-2021.05-Linux-x86_64.sh
 $ sudo nano ~/.bashrc
 ```
 
-텍스트 편집기가 열리면 마지막줄에 "export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH"를 추가하고 저장한다.
+텍스트 편집기가 열리면 마지막줄에 
+
+```
+export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH"
+```
+를 추가하고 저장한다.
 
 ```
 $ source ~/.bashrc
