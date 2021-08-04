@@ -42,7 +42,7 @@ $ cd ~/Downloads
 $ bash Anaconda3-2021.05-Linux-x86_64.sh
 ```
 
-<div><p align="center"><img src="assets/Anaconda_02.png"></p></div>
+<div><p><img src="assets/Anaconda_02.png"></p></div>
 
 'yse'를 선택한다.
 
