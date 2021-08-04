@@ -37,12 +37,16 @@
 $ cd ~/Downloads
 $ bash Anaconda3-2021.05-Linux-x86_64.sh
 ```
-<div><p align="center"><img src="assets/Anaconda_01.png"><br></p></div>
+
+<div><p align="center"><img src="assets/Anaconda_01.png"></p></div>
 'yse'를 선택한다.
+
 ```
 $ sudo nano ~/.bashrc
 ```
+
 텍스트 편집기가 열리면 마지막줄에 export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH 를 추가하고 저장한다.
+
 ```
 $ source ~/.bashrc
 ```
@@ -65,14 +69,17 @@ $ source activate robot3.5
 - data/input/image에 조립설명서 이미지 저장
 - data/input/label에 label.txt로 ground-truth 정보 저장
 ```
+
 * 데이터 전처리 모듈 실행
 ```
 python main.py --mode test_data
 ```
+
 * 전체 시스템 실행
 ```
 python main.py --mode test
 ```
+
 * 인식 모듈별 실행
 ```
 # 부품 위치 인식 모듈
