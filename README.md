@@ -81,8 +81,8 @@ $ source activate robot3.5
 
 * input 설정
 ```
-- data/input/image에 조립설명서 이미지 저장
-- data/input/label에 label.txt로 ground-truth 정보 저장
+data/input/image에 조립설명서 이미지 저장
+data/input/label에 label.txt로 ground-truth 정보 저장
 ```
 
 * 데이터 전처리 모듈 실행
