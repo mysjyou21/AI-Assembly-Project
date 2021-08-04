@@ -1,6 +1,7 @@
 # AI-Assembly-Project
 　이 소프트웨어는 파이썬, 텐서플로우 그리고 OpenCV로 구현되어 있으며 조립설명서에서 부품의 위치/종류/자세를 인식하는 기능으로 구성된다.
 
+
 # SW 개발 환경
 <table>
     <thead>
@@ -28,6 +29,7 @@
         </tr>        
     </tbody>
 </table>
+
 
 # 환경 설정
 
@@ -73,6 +75,7 @@ $ git clone https://github.com/mysjyou21/AI-Assembly-Project
 $ conda env create --file environment.yaml
 $ source activate robot3.5
 ```
+
 
 # 코드 실행
 
