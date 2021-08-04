@@ -35,12 +35,14 @@
 
 [아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
 
+<div><p align="center"><img src="assets/Anaconda_01.png"></p></div>
+
 ```
 $ cd ~/Downloads
 $ bash Anaconda3-2021.05-Linux-x86_64.sh
 ```
 
-<div><p align="center"><img src="assets/Anaconda_01.png"></p></div>
+<div><p align="center"><img src="assets/Anaconda_02.png"></p></div>
 
 'yse'를 선택한다.
 
@@ -48,7 +50,7 @@ $ bash Anaconda3-2021.05-Linux-x86_64.sh
 $ sudo nano ~/.bashrc
 ```
 
-텍스트 편집기가 열리면 마지막줄에 export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH 를 추가하고 저장한다.
+텍스트 편집기가 열리면 마지막줄에 "export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH"를 추가하고 저장한다.
 
 ```
 $ source ~/.bashrc
