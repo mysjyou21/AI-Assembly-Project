@@ -69,7 +69,7 @@ $ git clone https://github.com/mysjyou21/AI-Assembly-Project
 
 **3. 아나콘다 환경 빌드**
 
-　코드를 다운로드한 폴더로 이동한다.
+코드를 다운로드한 폴더로 이동한다.
  
 ```
 $ conda env create --file environment.yaml
