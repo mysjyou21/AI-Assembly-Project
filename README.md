@@ -35,8 +35,6 @@
 
 [아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
 
-<div><p align="center"><img src="assets/Anaconda_01.png"></p></div>
-
 ```
 $ cd ~/Downloads
 $ bash Anaconda3-2021.05-Linux-x86_64.sh
