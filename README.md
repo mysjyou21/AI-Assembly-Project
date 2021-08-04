@@ -31,7 +31,7 @@
 
 # 환경 설정
 
-## 1. 아나콘다 설치
+1. **아나콘다 설치**
 　[아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
 ```
 $ cd ~/Downloads
@@ -47,12 +47,12 @@ $ sudo nano ~/.bashrc
 $ source ~/.bashrc
 ```
 
-## 2. 코드 다운로드
+**2. 코드 다운로드**
 ```
 $ git clone https://github.com/mysjyou21/AI-Assembly-Project
 ```
 
-## 3. 아나콘다 환경 빌드
+**3. 아나콘다 환경 빌드**
 　코드를 다운로드한 폴더로 이동한다.
 ```
 $ conda env create --file environment.yaml
