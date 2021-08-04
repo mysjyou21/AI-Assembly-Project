@@ -31,8 +31,10 @@
 
 # 환경 설정
 
-1. **아나콘다 설치**
-　[아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
+**1. 아나콘다 설치**
+
+[아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
+
 ```
 $ cd ~/Downloads
 $ bash Anaconda3-2021.05-Linux-x86_64.sh
@@ -53,18 +55,22 @@ $ source ~/.bashrc
 ```
 
 **2. 코드 다운로드**
+
 ```
 $ git clone https://github.com/mysjyou21/AI-Assembly-Project
 ```
 
 **3. 아나콘다 환경 빌드**
+
 　코드를 다운로드한 폴더로 이동한다.
+ 
 ```
 $ conda env create --file environment.yaml
 $ source activate robot3.5
 ```
 
 # 코드 실행
+
 * input 설정
 ```
 - data/input/image에 조립설명서 이미지 저장
