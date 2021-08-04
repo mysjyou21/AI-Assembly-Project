@@ -79,23 +79,23 @@ $ source activate robot3.5
 
 # 코드 실행
 
-* input 설정
+**1. input 설정**
 ```
 data/input/image에 조립설명서 이미지 저장
 data/input/label에 label.txt로 ground-truth 정보 저장
 ```
 
-* 데이터 전처리 모듈 실행
+**2. 데이터 전처리 모듈 실행**
 ```
 python main.py --mode test_data
 ```
 
-* 전체 시스템 실행
+**3-1. 전체 시스템 실행**
 ```
 python main.py --mode test
 ```
 
-* 인식 모듈별 실행
+**3-2 인식 모듈별 실행**
 ```
 # 부품 위치 인식 모듈
 python main.py --mode detection
