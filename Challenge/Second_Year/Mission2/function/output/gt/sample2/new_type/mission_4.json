@@ -1,0 +1,43 @@
+{
+  "File_name": "sample2",
+  "Label_step_number": "5",
+  "Action0": {
+    "Part0": {
+      "label": "step4",
+      "sub_part": {
+        "part4": ["40"],
+        "part6": ["28"],
+        "part2": ["44"]
+      },
+      "#": "1",
+      "hole": [
+        "part6_1-hole_2",
+        "part6_1-hole_5",
+        "part5_1-hole_9"
+      ]
+    },
+    "Part1": {
+      "label": "part5",
+      "sub_part": {
+        "part5": ["28"]
+      },
+      "#": "1",
+      "hole": [
+        "part6_1-hole_2",
+        "part6_1-hole_5",
+        "part5_1-hole_9"
+      ]
+    },
+    "Part2": {},
+    "Part3": {},
+    "Action": {
+      "label": "A002",
+      "#": "3"
+    },
+    "Connector": {
+      "label": "C104322",
+      "#": "3"
+    },
+    "HolePair": []
+  }
+}

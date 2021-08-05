@@ -1,0 +1,108 @@
+{
+    "File_name": "part3",
+    "data": {
+        "PartName": "PART3.STEP",
+        "SizeToAxisX": "270",
+        "SizeToAxisY": "50",
+        "SizeToAxisZ": "20",
+        "CenterPointX": "0",
+        "CenterPointY": "0",
+        "CenterPointZ": "10",
+        "MinPointX": "-135",
+        "MinPointY": "-25",
+        "MinPointZ": "0",
+        "MaxPointX": "135",
+        "MaxPointY": "25",
+        "MaxPointZ": "20",
+        "hole": {
+            "hole_1": {
+                "CenterX": "-135",
+                "CenterY": "-16.0",
+                "CenterZ": "10.0",
+                "NormalX": "1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "3.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_2": {
+                "CenterX": "135",
+                "CenterY": "-16.0",
+                "CenterZ": "10.0",
+                "NormalX": "1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "3.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_3": {
+                "CenterX": "-135",
+                "CenterY": "0.0",
+                "CenterZ": "10.0",
+                "NormalX": "-1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "2.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_4": {
+                "CenterX": "135",
+                "CenterY": "0.0",
+                "CenterZ": "10.0",
+                "NormalX": "-1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "2.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_5": {
+                "CenterX": "-135",
+                "CenterY": "16.0",
+                "CenterZ": "10.0",
+                "NormalX": "1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "3.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_6": {
+                "CenterX": "135",
+                "CenterY": "16.0",
+                "CenterZ": "10.0",
+                "NormalX": "1",
+                "NormalY": "0",
+                "NormalZ": "0",
+                "Radius": "3.5",
+                "height": "23.0",
+                "through": "False"
+            },
+            "hole_7": {
+                "CenterX": "-80",
+                "CenterY": "-14.5",
+                "CenterZ": "20.0",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1",
+                "Radius": "3.0",
+                "height": "13.0",
+                "through": "False"
+            },
+            "hole_8": {
+                "CenterX": "80",
+                "CenterY": "-14.5",
+                "CenterZ": "20.0",
+                "NormalX": "0",
+                "NormalY": "0",
+                "NormalZ": "1",
+                "Radius": "3.0",
+                "height": "13.0",
+                "through": "False"
+            }
+        }
+    }
+}

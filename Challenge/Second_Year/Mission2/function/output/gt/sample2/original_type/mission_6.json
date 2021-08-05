@@ -1,0 +1,36 @@
+{
+  "File_name": "stefan",
+  "Label_step_number": "6",
+  "Action0": {
+    "Part0": {
+      "label": "step5",
+      "theta": "090",
+      "phi": "180",
+      "alpha": "270",
+      "additional": "left",
+      "#": "1",
+      "hole": []
+    },
+    "Part1": {
+      "label": "part1",
+      "theta": "090",
+      "phi": "270",
+      "alpha": "180",
+      "additional": "left",
+      "#": "1",
+      "hole": []
+    },
+    "Part2": {},
+    "Part3": {},
+    "Action": {
+      "label": "A005",
+      "#": "1"
+    },
+    "Connector": {
+      "label": "",
+      "#": "1"
+    },
+    "HolePair": [],
+    "Fail": false
+  }
+}
