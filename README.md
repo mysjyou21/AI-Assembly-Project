@@ -11,18 +11,6 @@
 
 * 부품 자세 인식 모듈: 조립설명서 부품 위치 인식 모듈의 출력인 부품 이미지, 조립설명서 부품 종류 인식 모듈의 출력인 부품 종류 정보를 기반으로 한 특정 부품의 CAD 파일을 입력데이터로 하여 각 부품의 자세를 인식한다. 이때 부품의 자세 정보는 48가지 사전에 정의된 자세 중 하나로 출력된다.
 
-## 모델 다운로드
-
-[[2019] Assembly Robot AI > 서울대 대용량 파일 공유](https://drive.google.com/drive/folders/1iMKuNfvyc5x8pfoO2DiyxCkWfwr13Jw0)에서 다운로드
-
-1. Evaluation.zip 파일을 다운로드 한다.
-
-2. /model 폴더를 codes/model 로 옮김
-
-3. /data/pose/view_imgs.npy 파일을 data/pose/view_imgs.npy 로 옮김
-    
-4. /data/input/npy/test_data.npy 파일을 data/input/npy/test_data.npy 로 옮김
-
 ## SW 개발 환경
 <table>
     <thead>
@@ -95,6 +83,18 @@
     $ conda env create --file environment.yaml
     $ source activate robot3.5
     ```
+    
+## 모델 다운로드
+
+[[2019] Assembly Robot AI > 서울대 대용량 파일 공유](https://drive.google.com/drive/folders/1iMKuNfvyc5x8pfoO2DiyxCkWfwr13Jw0)에서 다운로드
+
+1. Evaluation.zip 파일을 다운로드 한다.
+
+2. /model 폴더를 codes/model 로 옮김
+
+3. /data/pose/view_imgs.npy 파일을 data/pose/view_imgs.npy 로 옮김
+    
+4. /data/input/npy/test_data.npy 파일을 data/input/npy/test_data.npy 로 옮김
 
 ## 코드 실행
 1. **input 설정**
