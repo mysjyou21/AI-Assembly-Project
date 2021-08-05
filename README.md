@@ -10,7 +10,19 @@
 * 부품 종류 인식 모듈: 조립설명서 부품 위치 인식 모듈의 출력인 부품 이미지와, 여러 부품의 CAD 파일을 입력데이터로 하여 각 부품 이미지에 그려진 부품의 종류를 인식한다.
 
 * 부품 자세 인식 모듈: 조립설명서 부품 위치 인식 모듈의 출력인 부품 이미지, 조립설명서 부품 종류 인식 모듈의 출력인 부품 종류 정보를 기반으로 한 특정 부품의 CAD 파일을 입력데이터로 하여 각 부품의 자세를 인식한다. 이때 부품의 자세 정보는 48가지 사전에 정의된 자세 중 하나로 출력된다.
- 
+
+## 모델 다운로드
+
+[[2019] Assembly Robot AI > 서울대 대용량 파일 공유](https://drive.google.com/drive/folders/1iMKuNfvyc5x8pfoO2DiyxCkWfwr13Jw0)에서 다운로드
+
+1. Evaluation.zip 파일을 다운로드 한다.
+
+2. /model 폴더를 codes/model 로 옮김
+
+3. /data/pose/view_imgs.npy 파일을 data/pose/view_imgs.npy 로 옮김
+    
+4. /data/input/npy/test_data.npy 파일을 data/input/npy/test_data.npy 로 옮김
+
 ## SW 개발 환경
 <table>
     <thead>
@@ -41,7 +53,8 @@
 
 
 ## 환경 설정
-1. **아나콘다 설치** 
+1. **아나콘다 설치**
+ 
     [아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
     
     ```
@@ -201,21 +214,3 @@
 * Evaluation_3.ipynb : 코드 설명이 있고, 여러 가지 모드로 테스트를 수행할 수 있는 파일로 main.py을 실행
 * main.py : 테스트 모드를 나누어 quantative_report_pose.py를 실행
 * quantative_report_pose.py : ‘데이터 전처리 모듈’, ‘부품 위치 인식 모듈’, ‘부품 종류 인식 모듈’, ‘부품 자세 인식 모듈’을 통합적으로 실행하는 파일
-
-
-## Download models from google drive
-
-[[2019] Assembly Robot AI > 서울대 대용량 파일 공유](https://drive.google.com/drive/folders/1iMKuNfvyc5x8pfoO2DiyxCkWfwr13Jw0)에서 다운로드
-
-* IKEArobot.zip
-
-              function/Pose/data 폴더를 Second_Year/Mission2/function/Pose/data로 옮김
-              model 폴더를 Second_Year/Mission2/model로 옮김
-
-* Evaluation.zip
-
-              1/model 폴더를 Evaluation/1/codes/model 로 옮김
-              2/checkpoint 폴더를 Evaluation/2/codes/checkpoint 로 옮김
-              3/model 폴더를 Evaluation/3/codes/model 로 옮김
-              3/data/pose/view_imgs.npy 파일을 Evaluation/3/data/pose/view_imgs.npy 로 옮김
-              3/data/input/npy/test_data.npy 파일을 Evaluation/3/data/input/npy/test_data.npy 로 옮김
