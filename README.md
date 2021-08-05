@@ -73,11 +73,11 @@
     
     ```
     $ git clone https://github.com/mysjyou21/AI-Assembly-Project
+    $ cd AI-Assembly-Project
     ```
 
 3. **아나콘다 환경 빌드** 
 
-    코드를 다운로드한 폴더로 이동한다.
     
     ```
     $ conda env create --file environment.yaml
@@ -101,9 +101,9 @@
     
     ```
     data/input/image에 조립설명서 이미지 저장
-    data/input/label에 label.txt로 ground-truth 정보 저장
-    
+    data/input/label에 label.txt로 ground-truth 정보 저장   
     ```
+    
 2. **데이터 전처리 모듈 실행**
     
     ```
@@ -214,3 +214,8 @@
 * Evaluation_3.ipynb : 코드 설명이 있고, 여러 가지 모드로 테스트를 수행할 수 있는 파일로 main.py을 실행
 * main.py : 테스트 모드를 나누어 quantative_report_pose.py를 실행
 * quantative_report_pose.py : ‘데이터 전처리 모듈’, ‘부품 위치 인식 모듈’, ‘부품 종류 인식 모듈’, ‘부품 자세 인식 모듈’을 통합적으로 실행하는 파일
+
+## 라이선스
+
+## 문의사항
+Korea Institute of Industrial Technology(KITECH) : [Sujeong You](mailto:sjyou21@kitech.re.kr)
