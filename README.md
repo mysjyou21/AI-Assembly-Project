@@ -107,9 +107,9 @@
 2. **데이터 전처리 모듈 실행**
     
     ```
-    python main.py --mode test_data
-    
+    python main.py --mode test_data   
     ```
+    
 3. **전체 시스템 실행**
     
     ```
