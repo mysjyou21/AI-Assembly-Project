@@ -1,7 +1,16 @@
 # AI-Assembly-Project
-　이 소프트웨어는 파이썬, 텐서플로우 그리고 OpenCV로 구현되어 있으며 조립설명서에서 부품의 위치/종류/자세를 인식하는 기능으로 구성된다.
+이 소프트웨어는 파이썬, 텐서플로우 그리고 OpenCV로 구현되어 있으며 조립설명서에서 부품의 위치/종류/자세를 인식하는 기능으로 구성된다. 소프트웨어의 아키텍쳐 구조는 다음과 같다.
 
+<div><p align="center"><img src="assets/10.png" width="75%" height="75%"><br>조립설명서 부품의 위치/종류/자세 인식 아키텍쳐</p></div>
 
+* 데이터 전처리 모듈: 조립설명서 이미지를 npy 형식으로 변환한다. 또한, 조립설명서의 ground-truth 정보를 텍스트 파일로 입력받아, ‘부품 위치 인식 모듈’, ‘부품 종류 인식 모듈’, ‘부품 자세   인식 모듈’에 대한 ground-truth 정보를 각각 별개로 저장해놓는다.
+
+* 부품 위치 인식 모듈: 조립설명서 이미지를 입력데이터로 하여 각 부품의 위치를 출력한다. 이를 기반으로 각 부품 영역을 잘라내어 부품 이미지를 생성한다.
+
+* 부품 종류 인식 모듈: 조립설명서 부품 위치 인식 모듈의 출력인 부품 이미지와, 여러 부품의 CAD 파일을 입력데이터로 하여 각 부품 이미지에 그려진 부품의 종류를 인식한다.
+
+* 부품 자세 인식 모듈: 조립설명서 부품 위치 인식 모듈의 출력인 부품 이미지, 조립설명서 부품 종류 인식 모듈의 출력인 부품 종류 정보를 기반으로 한 특정 부품의 CAD 파일을 입력데이터로 하여 각 부품의 자세를 인식한다. 이때 부품의 자세 정보는 48가지 사전에 정의된 자세 중 하나로 출력된다.
+ 
 ## SW 개발 환경
 <table>
     <thead>
@@ -32,85 +41,84 @@
 
 
 ## 환경 설정
+1. **아나콘다 설치** 
+    [아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
+    
+    ```
+    $ cd ~/Downloads
+    $ bash Anaconda3-2021.05-Linux-x86_64.sh
+    ```
+    
+    <div><p><img src="assets/Anaconda_02.png"></p></div>
+    
+    'yse'를 입력하고 Enter 키를 누른다. 아래의 명령어를 입력해 텍스트 편집기를 실행한다.
+    
+    ```
+    $ sudo nano ~/.bashrc
+    ```
+    
+    텍스트 편집기가 열리면 마지막줄에 
+    
+    ```
+    export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH"
+    ```
+    
+    를 추가하고 저장한다.
+    
+    ```
+    $ source ~/.bashrc
+    ```
+2. **코드 다운로드**
+    
+    ```
+    $ git clone https://github.com/mysjyou21/AI-Assembly-Project
+    ```
 
-**1. 아나콘다 설치**
+3. **아나콘다 환경 빌드** 
 
-[아나콘다 홈페이지](https://www.anaconda.com/products/individual)에 들어가서 Anaconda Python3.x Linux 버전을 다운로드 한다.
-
-```
-$ cd ~/Downloads
-$ bash Anaconda3-2021.05-Linux-x86_64.sh
-```
-
-<div><p><img src="assets/Anaconda_02.png"></p></div>
-
-'yse'를 선택한다.
-
-```
-$ sudo nano ~/.bashrc
-```
-
-텍스트 편집기가 열리면 마지막줄에 
-
-```
-export PATH=~/anaconda3/bin:~/anaconda3/condabin:$PATH"
-```
-를 추가하고 저장한다.
-
-```
-$ source ~/.bashrc
-```
-
-**2. 코드 다운로드**
-
-```
-$ git clone https://github.com/mysjyou21/AI-Assembly-Project
-```
-
-**3. 아나콘다 환경 빌드**
-
-코드를 다운로드한 폴더로 이동한다.
- 
-```
-$ conda env create --file environment.yaml
-$ source activate robot3.5
-```
-
+    코드를 다운로드한 폴더로 이동한다.
+    
+    ```
+    $ conda env create --file environment.yaml
+    $ source activate robot3.5
+    ```
 
 ## 코드 실행
-
-**1. input 설정**
-```
-data/input/image에 조립설명서 이미지 저장
-data/input/label에 label.txt로 ground-truth 정보 저장
-```
-
-**2. 데이터 전처리 모듈 실행**
-```
-python main.py --mode test_data
-```
-
-**3-1. 전체 시스템 실행**
-```
-python main.py --mode test
-```
-
-**3-2 인식 모듈별 실행**
-```
-# 부품 위치 인식 모듈
-python main.py --mode detection
-    >> --detection_visualization True : 이미지 결과 저장
+1. **input 설정**
     
-# 부품 종류 인식 모듈
-python main.py --mode retrieval
-    >> --retrieval_visualization True : 이미지 결과 저장
+    ```
+    data/input/image에 조립설명서 이미지 저장
+    data/input/label에 label.txt로 ground-truth 정보 저장
     
-# 부품 자세 인식 모듈
-python main.py --mode pose
-    >> --pose_visualization True : 이미지 결과 저장
-```
+    ```
+2. **데이터 전처리 모듈 실행**
+    
+    ```
+    python main.py --mode test_data
+    
+    ```
+3. **전체 시스템 실행**
+    
+    ```
+    python main.py --mode test
+    ```
+    
+4. **인식 모듈별 실행**
 
+    ```
+    # 부품 위치 인식 모듈
+    python main.py --mode detection
+        >> --detection_visualization True : 이미지 결과 저장
 
+    # 부품 종류 인식 모듈
+    python main.py --mode retrieval
+        >> --retrieval_visualization True : 이미지 결과 저장
+
+    # 부품 자세 인식 모듈
+    python main.py --mode pose
+        >> --pose_visualization True : 이미지 결과 저장
+    ```
+    
 ## 데이터 구성
 
 ```
@@ -164,6 +172,22 @@ python main.py --mode pose
 
 
 ## 코드 구성
+
+```
+./codes/
+├── function/
+│   └── detection/
+│   └── pose/
+│   └── retrieval/
+│   └── test/
+├── intermediate results/
+├── model/
+├── output/
+├── args.py
+├── Evaluation_3.ipynb
+├── main.py
+├── quantitative_report_pose.py
+```
 
 * function/detection/ : ‘부품 위치 인식 모듈’ 관련 함수들이 저장된 폴더
 * function/retrieval/ : ‘부품 종류 인식 모듈’ 관련 함수들이 저장된 폴더
