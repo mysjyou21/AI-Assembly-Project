@@ -1,7 +1,7 @@
 # AI-Assembly-Project
 이 소프트웨어는 파이썬, 텐서플로우 그리고 OpenCV로 구현되어 있으며 조립설명서에서 부품의 위치/종류/자세를 인식하는 기능으로 구성된다. 소프트웨어의 아키텍쳐 구조는 다음과 같다.
 
-<div><p align="center"><img src="assets/10.png" width="75%" height="75%"><br>조립설명서 부품의 위치/종류/자세 인식 아키텍쳐</p></div>
+<div><p align="center"><img src="pic/10.png" width="75%" height="75%"><br>조립설명서 부품의 위치/종류/자세 인식 아키텍쳐</p></div>
 
 * 데이터 전처리 모듈: 조립설명서 이미지를 npy 형식으로 변환한다. 또한, 조립설명서의 ground-truth 정보를 텍스트 파일로 입력받아, ‘부품 위치 인식 모듈’, ‘부품 종류 인식 모듈’, ‘부품 자세   인식 모듈’에 대한 ground-truth 정보를 각각 별개로 저장해놓는다.
 
@@ -50,7 +50,7 @@
     $ bash Anaconda3-2021.05-Linux-x86_64.sh
     ```
     
-    <div><p><img src="assets/Anaconda_02.png"></p></div>
+    <div><p><img src="pic/Anaconda_02.png"></p></div>
     
     'yse'를 입력하고 Enter 키를 누른다. 아래의 명령어를 입력해 텍스트 편집기를 실행한다.
     
@@ -159,17 +159,17 @@
 
 * detection/bbox_answer/ : ‘부품 위치 인식 모듈’의 evaluation에 사용되는 ground-truth 텍스트 파일. class, left, top, right, bottom 의 형식이다. 이때 class는 New/Mid이고, 나머지는 bounding box 정보이다.
 
-<div><p align="center"><img src="assets/12.png"><br>bbox_answer 텍스트 파일 예시</p></div>
+<div><p align="center"><img src="pic/12.png"><br>bbox_answer 텍스트 파일 예시</p></div>
 
 * input/bbox_answer/ : ‘부품 자세 인식 모듈’의 evaluation에 사용되는 ground-truth 텍스트 파일. class, left, top, right, bottom 의 형식이다. 이때 class는 (부품 종류)-(자세)이고, 나머지는 bounding box 정보이다.
 
-<div><p align="center"><img src="assets/13.png"><br>bbox_answer 텍스트 파일 예시</p></div>
+<div><p align="center"><img src="pic/13.png"><br>bbox_answer 텍스트 파일 예시</p></div>
 
 * input/cad/ : 10가지 cad가 각가 obj 형식으로 저장되어있다
 * input/image/ : 조립설명서 이미지를 저장하는 폴더
 * input/label/label.txt : 조립설명서 이미지의 ground-truth 정보 텍스트 파일. 이미지 이름, left, top, width, height, class0, class1, class2 형식이다. 이때 class0는 New/Mid, class1은 부품 종류, class2는 자세 정보이며, 나머지는 bounding box 정보이다. 각 모듈을 evaluate 하기 위한 ground-truth 정보를 생성하는데 사용된다.
 
-<div><p align="center"><img src="assets/14.png"><br>label 텍스트 파일 예시</p></div>
+<div><p align="center"><img src="pic/14.png"><br>label 텍스트 파일 예시</p></div>
 
 * npy/test_data.npy (크기 : 10x1700x1200x3) : 조립설명서 이미지가 npy 형식으로 변환되어 저장된 것. 10은 이미지 개수에 해당된다.
 
@@ -179,7 +179,7 @@
 
 * retrieval/ground_truth/ : ‘부품 종류 인식 모듈’의 evaluation에 사용되는 ground-truth 텍스트 파일. class, left, top, right, bottom 의 형식이다. 이때 class는 (부품 종류)이고, 나머지는 bounding box 정보이다.
 
-<div><p align="center"><img src="assets/15.png"><br>ground_truth 텍스트 파일 예시</p></div>
+<div><p align="center"><img src="pic/15.png"><br>ground_truth 텍스트 파일 예시</p></div>
 
 * retrieval/test_view.npy (크기 : 10x12x224x224x3) : 10가지 부품을 12가지 자세로 투영한 이미지를 npy로 저장한 형식. ‘부품 종류 인식 모듈’의 evaluation과 visualization에 사용됨.
 
